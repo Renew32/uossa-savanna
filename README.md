@@ -41,7 +41,7 @@ Deux carrefours jalonnent la route. Au premier (« Le carrefour »), la flèche 
 
 - À l’arrêt (devant un panneau, au carrefour, à l’accueil), la scène est rendue à la pleine densité de l’écran (jusqu’à 2) pour des photos nettes, puis revient à une densité plus légère dès que la caméra bouge ou qu’on touche l’écran.
 - Photo agrandie : plein écran, double-toucher pour zoomer à 2,5× et se déplacer dans la photo, balayage pour changer de photo.
-- Sur l’accueil, le logo 3D se tient sur la route sous le texte et précède la caméra, puis on le dépasse en entrant dans le chapitre suivant.
+- Sur l’accueil, le logo 3D se place à droite du titre et l’accompagne pendant l’accueil, puis on passe dessous en entrant dans le chapitre suivant.
 - Mise en page dédiée au téléphone tenu à l’horizontale ; zones tactiles d’au moins 44 px ; marges pour l’encoche et la barre d’accueil.
 - Aperçu au partage (image `public/og-image.jpg`, adresse absolue dans `index.html`) et icône d’écran d’accueil.
 

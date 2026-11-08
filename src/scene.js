@@ -202,16 +202,16 @@ vec3 clay=mix(vec3(.42,.255,.12),vec3(.67,.445,.25),grain*.5+coarse*.25);clay-=(
   const halo=new THREE.Mesh(new THREE.PlaneGeometry(10.5,10.5),new THREE.MeshBasicMaterial({map:haloTexture,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,toneMapped:false,fog:false}));halo.position.z=-.5;monument.add(halo);
   const monumentZ=20, groundOffset=3.32, discWidth=2*3.08*.86;
   let standing=false;
-  // On a phone the emblem stands on the road, low in the frame, under the home text: its centre is
-  // placed at a chosen point of the first view and it rests on its pedestal. The camera passes it
-  // as soon as the journey starts (it fades and sinks into the road just before).
+  // Places the emblem so its centre falls on a chosen point of the first view: at a given depth, or
+  // (without one) at the depth where it rests on its pedestal on the road.
   const probe=new THREE.PerspectiveCamera(),ray=new THREE.Vector3(),forward=new THREE.Vector3();
-  function standOnRoad(xN,yN,widthShare){
+  function placeOnScreen(xN,yN,widthShare,depth){
     const camY=roadHeight(START_Z)+2.2;probe.fov=camera.fov;probe.aspect=camera.aspect;probe.near=.1;probe.far=100;probe.updateProjectionMatrix();
     probe.position.set(roadX(START_Z),camY,START_Z);probe.lookAt(roadX(START_Z-16),roadHeight(START_Z-16)+1.58,START_Z-16);probe.updateMatrixWorld();
     ray.set(xN,yN,.5).unproject(probe).sub(probe.position).normalize();probe.getWorldDirection(forward);
     const tanV=Math.tan(THREE.MathUtils.degToRad(probe.fov/2)),along=ray.dot(forward);
     const at=d=>{const t=d/along;return {x:probe.position.x+ray.x*t,y:probe.position.y+ray.y*t,z:probe.position.z+ray.z*t,scale:widthShare*2*d*tanV*probe.aspect/discWidth}};
+    if(depth)return at(depth);
     let lo=1,hi=40;for(let i=0;i<40;i++){const m=(lo+hi)/2,q=at(m);if(q.y-groundOffset*q.scale-roadHeight(q.z)>0)lo=m;else hi=m}
     return at((lo+hi)/2);
   }
@@ -219,23 +219,23 @@ vec3 clay=mix(vec3(.42,.255,.12),vec3(.67,.445,.25),grain*.5+coarse*.25);clay-=(
     const narrow=innerWidth<=760&&innerHeight>innerWidth;
     standing=narrow;
     if(narrow){
-      // Fit the emblem (disc and pedestal, about 1.2 times as tall as wide) in the free band
-      // between the home text and the line at the bottom of the first screen.
+      // Beside the home title, on the right: as tall as the title block, centred on it, floating
+      // above the road a dozen metres ahead (the camera later passes beneath it).
       const top=(el,parent)=>{let y=0;for(let n=el;n&&n!==parent;n=n.offsetParent)y+=n.offsetTop;return y};
-      const hero=document.querySelector('.hero'),content=hero?.querySelector('.chapter-content'),link=hero?.querySelector('.journey-link'),foot=hero?.querySelector('.hero-bottom');
+      const hero=document.querySelector('.hero'),content=hero?.querySelector('.chapter-content'),title=hero?.querySelector('h1');
       const H=innerHeight,W=innerWidth;
-      let from=H*.56,to=H*.86;
-      // (The bottom line is hidden in reduced-motion mode: the band then ends above the bottom bar.)
-      if(content&&link){from=top(link,content)-top(content,hero)+link.offsetHeight+14;to=foot?.offsetParent?top(foot,hero)-10:H-96}
-      const height=Math.max(80,to-from),width=Math.min(W*.56,height/1.21),centreY=from+(height-width*1.21)/2+width*1.21*(3.08/6.4);
-      const q=standOnRoad(.06,1-2*centreY/H,width/W);
+      let from=H*.2,to=H*.42;
+      if(content&&title){from=top(title,content)-top(content,hero);to=from+title.offsetHeight}
+      const discHeight=Math.min((to-from)*1.08,W*.42/.86),width=discHeight*.86,centreX=W*.96-width/2,centreY=(from+to)/2+discHeight*.04;
+      const q=placeOnScreen(2*centreX/W-1,1-2*centreY/H,width/W,12);
       monument.scale.setScalar(q.scale);monument.position.set(q.x,q.y,q.z);
       Object.assign(monument.userData,{baseY:q.y,lead:START_Z-q.z,side:q.x-roadX(q.z),lift:q.y-roadHeight(q.z)});
     }else{
       const scale=Math.min(1.08,camera.aspect*.75);
       monument.scale.setScalar(scale);monument.position.set(roadX(monumentZ)+Math.min(5.3,camera.aspect*4),roadHeight(monumentZ)+groundOffset*scale,monumentZ);monument.userData.baseY=monument.position.y;
     }
-    pedestal.visible=true;rim.visible=true;
+    // Floating beside the title on a phone, the emblem needs no pedestal.
+    pedestal.visible=!narrow;rim.visible=!narrow;
   }
   // Phone layout: while the home text is on screen the emblem keeps the same distance ahead of the
   // camera, leading the way; after that it stays put, and fades and sinks as the camera reaches it.
