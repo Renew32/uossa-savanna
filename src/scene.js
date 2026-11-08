@@ -3,10 +3,12 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { START_Z, TRAVEL, END_Z, ROAD_HALF_WIDTH, roadX, roadSlope, roadHeight, terrainHeight, roadDistance, SIDE_PATHS, EXIT_SCREENS } from './route.js';
+// Public files, under the site's base path ("/" locally, "/uossa-savanna/" on GitHub Pages).
+const asset = (path) => import.meta.env.BASE_URL + path;
 
 // Executive-board photos along the bureau road (same order as the HTML captions), then the group photo.
-export const BUREAU_IMAGES = ['/bureau/02.webp','/bureau/03.webp','/bureau/04.webp'];
-const GROUP_PHOTO = '/bureau-2026-2027.webp', LOGO = '/uossa-logo-2026.jpg';
+export const BUREAU_IMAGES = [asset('bureau/02.webp'),asset('bureau/03.webp'),asset('bureau/04.webp')];
+const GROUP_PHOTO = asset('bureau-2026-2027.webp'), LOGO = asset('uossa-logo-2026.jpg');
 
 export function createSavanna(canvas, state, { mobile, calm, onReady }) {
   let renderer;
@@ -45,7 +47,7 @@ export function createSavanna(canvas, state, { mobile, calm, onReady }) {
   }
 
   // Distant photographic atmosphere only; the road and the near landscape are meshes.
-  const panorama = new THREE.TextureLoader().load('/textures/safari-sunset.webp',ready,undefined,ready);panorama.colorSpace=THREE.SRGBColorSpace;
+  const panorama = new THREE.TextureLoader().load(asset('textures/safari-sunset.webp'),ready,undefined,ready);panorama.colorSpace=THREE.SRGBColorSpace;
   const skyMat = new THREE.ShaderMaterial({toneMapped:false,side:THREE.BackSide,depthWrite:false,uniforms:{map:{value:panorama},time:{value:0},pointer:{value:new THREE.Vector2()}},vertexShader:`varying vec3 direction;void main(){direction=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,fragmentShader:`uniform sampler2D map;uniform float time;uniform vec2 pointer;varying vec3 direction;void main(){vec3 d=normalize(direction);vec2 uv=vec2(fract(.5+atan(d.x,-d.z)/6.28318),.5+asin(clamp(d.y,-1.,1.))/3.14159265);vec3 col=texture2D(map,uv).rgb;gl_FragColor=vec4(col,1.);\n#include <tonemapping_fragment>\n#include <colorspace_fragment>\n}`});
   const sky = add(new THREE.Mesh(new THREE.SphereGeometry(440,40,24),skyMat));sky.frustumCulled=false;
 
@@ -58,7 +60,7 @@ export function createSavanna(canvas, state, { mobile, calm, onReady }) {
   groundGeometry.computeVertexNormals();
   const assetTextures=[];
   const texture=(path,color=false)=>{const t=new THREE.TextureLoader().load(path,()=>{needsRender=true;if(!stopped)renderer.initTexture(t)});t.colorSpace=color?THREE.SRGBColorSpace:THREE.NoColorSpace;t.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());assetTextures.push(t);return t;};
-  const soil=texture('/textures/diff.jpg',true),normal=texture('/textures/normal.jpg');
+  const soil=texture(asset('textures/diff.jpg'),true),normal=texture(asset('textures/normal.jpg'));
   for(const t of [soil,normal]){t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(groundW/4,groundD/4)}
   const terrainMat = new THREE.MeshStandardMaterial({color:'#b1a47d',map:soil,normalMap:normal,normalScale:new THREE.Vector2(.65,.65),roughness:1,envMapIntensity:.1});
   terrainMat.onBeforeCompile = shader => {
@@ -179,8 +181,8 @@ vec3 clay=mix(vec3(.42,.255,.12),vec3(.67,.445,.25),grain*.5+coarse*.25);clay-=(
     }
     const mesh=add(new THREE.Mesh(geo,mat));mesh.frustumCulled=false;return mat;
   }
-  const treeCards=vegetation('/textures/acacia.webp',mobile?62:113,true,mobile?22:40);
-  const grassCards=vegetation('/textures/grass.webp',mobile?4750:13500,false,mobile?1600:4800);
+  const treeCards=vegetation(asset('textures/acacia.webp'),mobile?62:113,true,mobile?22:40);
+  const grassCards=vegetation(asset('textures/grass.webp'),mobile?4750:13500,false,mobile?1600:4800);
   const rocks=add(new THREE.InstancedMesh(new THREE.DodecahedronGeometry(1,1),new THREE.MeshStandardMaterial({color:'#918268',map:soil,roughness:1}),mobile?65:160));
   for(let i=0;i<rocks.count;i++){const z=mainZ(40,END_Z-90),x=roadX(z)+(rand()>.5?1:-1)*(3.25+rand()*9),ok=roadDistance(x,z)>=3.25;dummy.position.set(x,ok?terrainHeight(x,z):HIDDEN,z);dummy.rotation.set(rand(),rand()*6.28,rand());const s=.07+Math.pow(rand(),3)*.45;dummy.scale.set(s*1.6,s*.5,s);dummy.updateMatrix();rocks.setMatrixAt(i,dummy.matrix)}rocks.computeBoundingSphere();
 
@@ -188,7 +190,7 @@ vec3 clay=mix(vec3(.42,.255,.12),vec3(.67,.445,.25),grain*.5+coarse*.25);clay-=(
   const monument=add(new THREE.Group());let logo=null;
   const pedestal=new THREE.Mesh(new THREE.CylinderGeometry(1.65,1.9,.7,48),new THREE.MeshStandardMaterial({color:'#253325',roughness:.65,metalness:.15}));pedestal.position.y=-2.97;monument.add(pedestal);
   const rim=new THREE.Mesh(new THREE.TorusGeometry(1.68,.026,6,64),new THREE.MeshStandardMaterial({color:'#d9ae45',metalness:.7,roughness:.3}));rim.rotation.x=Math.PI/2;rim.position.y=-2.62;monument.add(rim);
-  new GLTFLoader().load('/models/uossa-logo-relief.glb',gltf=>{
+  new GLTFLoader().load(asset('models/uossa-logo-relief.glb'),gltf=>{
     if(stopped){gltf.scene.traverse(o=>{o.geometry?.dispose();o.material?.dispose()});return;}
     logo=gltf.scene;logo.traverse(o=>{if(o.material)o.material.envMapIntensity=1.1});monument.add(logo);ready();
   },undefined,()=>{document.documentElement.classList.add('logo-fallback');monument.visible=false;ready()});

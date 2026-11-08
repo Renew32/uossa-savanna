@@ -20,6 +20,17 @@ npm run preview
 
 L’aperçu de production utilise normalement http://127.0.0.1:4173. Le dossier `build/` contient le site statique, sans backend ni clé API. Le ZIP contient les sources et le verrouillage des dépendances, sans les dépendances installées.
 
+## Publier sur GitHub Pages
+
+Le site est publié sur https://renew32.github.io/uossa-savanna/ (branche `gh-pages` du dépôt `Renew32/uossa-savanna`). Les fichiers publics passent par `import.meta.env.BASE_URL`, donc le même code marche à la racine en local et sous `/uossa-savanna/` en ligne. Pour republier :
+
+```sh
+npx vite build --base=/uossa-savanna/ --outDir /tmp/uossa-pages --emptyOutDir
+rsync -a --exclude uossa-original.jpg public/ /tmp/uossa-pages/ && touch /tmp/uossa-pages/.nojekyll
+cd /tmp/uossa-pages && git init -q -b gh-pages && git add -A && git commit -qm "Publication" \
+  && git push -f https://github.com/Renew32/uossa-savanna.git gh-pages
+```
+
 ## Contrôles
 
 Défiler pour avancer sur la route ; utiliser les liens pour changer de chapitre. Le curseur influence légèrement la caméra et le vent. Le bouton « Animation réduite » fige la caméra et les effets. La préférence système de réduction des mouvements est également respectée. Navigation clavier et lien d’évitement inclus. Instagram reste disponible en bas à droite.

@@ -9,6 +9,8 @@ import "lenis/dist/lenis.css";
 const sceneModule = import("./scene.js");
 import { START_Z, END_Z, TRAVEL, FORK_Z, JOIN_Z, SIDE_PATHS, SIDE_SCREENS, EXIT_SCREENS } from "./route.js";
 import "./style.css";
+// Public files, under the site's base path ("/" locally, "/uossa-savanna/" on GitHub Pages).
+const asset = (path) => import.meta.env.BASE_URL + path;
 
 gsap.registerPlugin(ScrollTrigger);
 const chapters = ["L’esprit", "La téranga", "Le carrefour", "Nos racines", "Votre place", "Ensemble"];
@@ -80,10 +82,10 @@ function Kinetic({ text, italic = false }) {
   );
 }
 const boardImages = [
-  {src:'/bureau-2026-2027.webp',alt:'Photo de groupe de l’équipe UOSSA 2026–2027'},
-  {src:'/bureau/02.webp',alt:'Planche de portraits : coprésidence, président sortant et marketing'},
-  {src:'/bureau/03.webp',alt:'Planche de portraits : vie interne, finances, événementiel et bénévoles'},
-  {src:'/bureau/04.webp',alt:'Planche de portraits : projets, mentorat et équipe événementielle'},
+  {src:asset('bureau-2026-2027.webp'),alt:'Photo de groupe de l’équipe UOSSA 2026–2027'},
+  {src:asset('bureau/02.webp'),alt:'Planche de portraits : coprésidence, président sortant et marketing'},
+  {src:asset('bureau/03.webp'),alt:'Planche de portraits : vie interne, finances, événementiel et bénévoles'},
+  {src:asset('bureau/04.webp'),alt:'Planche de portraits : projets, mentorat et équipe événementielle'},
 ];
 // Order along the bureau road: three boards beside the road, then the group photo as the finale.
 const branchOrder = [1, 2, 3, 0];
@@ -560,7 +562,7 @@ function App() {
           </div>
           <img
             className="hero-emblem-fallback"
-            src="/uossa-logo-2026.jpg"
+            src={asset("uossa-logo-2026.jpg")}
             alt="Emblème UOSSA Sénégal"
           />
           <div className="hero-paths"><nav className="route-fork" aria-label="Choisir un parcours">
@@ -738,7 +740,7 @@ function App() {
             </nav>
             <div className="identity reveal">
               <img
-                src="/uossa-logo-2026.jpg"
+                src={asset("uossa-logo-2026.jpg")}
                 alt="Logo original UOSSA Sénégal : lion doré, étoile verte et couleurs sénégalaises"
                 width="72"
                 height="72"
