@@ -12,18 +12,16 @@ gsap.registerPlugin(ScrollTrigger);
 const chapters = ["L’esprit", "La téranga", "Le carrefour", "Nos racines", "Votre place", "Ensemble"];
 const chapterIds = ["esprit", "teranga", "carrefour", "racines", "votre-place", "ensemble"];
 // Side roads: the crossroads they leave from, the chapter where they rejoin the main road,
-// and their name in the header menu.
+// and their name and arrow in the header menu.
 const SIDES = {
-  bureau: { fork: "carrefour", join: "racines", label: "Le bureau exécutif" },
-  inscription: { fork: "votre-place", join: "ensemble", label: "Inscription & recensement" },
+  bureau: { fork: "carrefour", join: "racines", label: "Le bureau exécutif", arrow: "←" },
+  inscription: { fork: "votre-place", join: "ensemble", label: "Inscription & recensement", arrow: "→" },
 };
-// The header menu « Les chemins »: every crossroads, in the order of the journey, with the roads
-// leaving it in the order of its arrows (a side road, or the main road on to the next chapter).
-// A new crossroads or a new road only needs its line here to appear in the menu.
-const CROSSROADS = [
-  { id: "carrefour", roads: [{ side: "bureau", arrow: "←" }, { next: "racines", arrow: "→" }] },
-  { id: "votre-place", roads: [{ next: "ensemble", arrow: "↑" }, { side: "inscription", arrow: "→" }] },
-];
+// The header menu « Les chemins »: every crossroads, in the order of the journey, with the side
+// roads leaving it. A new side road only needs its entry in SIDES to appear in the menu.
+const CROSSROADS = chapterIds
+  .filter((id) => Object.values(SIDES).some((side) => side.fork === id))
+  .map((id) => ({ id, roads: Object.keys(SIDES).filter((name) => SIDES[name].fork === id) }));
 function RoutesMenu({ jump, openRoute }) {
   const [open, setOpen] = useState(false);
   const box = useRef(null), toggle = useRef(null);
@@ -41,10 +39,6 @@ function RoutesMenu({ jump, openRoute }) {
     };
   }, [open]);
   const pick = (go) => (e) => { setOpen(false); go(e); };
-  const chapterLink = (id, content, className) => {
-    const index = chapterIds.indexOf(id);
-    return <a key={id} href={`#${id}`} className={className} onClick={pick((e) => jump(e, index))}>{content(chapters[index])}</a>;
-  };
   return (
     <div className={`routes-menu ${open ? "open" : ""}`} ref={box}>
       <button ref={toggle} className="header-link routes-toggle" aria-expanded={open} aria-controls="routes-panel" onClick={() => setOpen((o) => !o)}>
@@ -53,14 +47,16 @@ function RoutesMenu({ jump, openRoute }) {
       <nav id="routes-panel" className="routes-panel" aria-label="Carrefours et chemins" hidden={!open}>
         {CROSSROADS.map((fork, n) => (
           <div className="routes-group" key={fork.id}>
-            {chapterLink(fork.id, (title) => <><small>CARREFOUR {String(n + 1).padStart(2, "0")}</small>{title}</>, "routes-fork")}
-            {fork.roads.map((road) => road.side
-              ? <a key={road.side} href={`#${road.side}`} onClick={pick((e) => openRoute(e, road.side))}><span aria-hidden="true">{road.arrow}</span>{SIDES[road.side].label}</a>
-              : chapterLink(road.next, (title) => <><span aria-hidden="true">{road.arrow}</span>{title}</>))}
+            <a href={`#${fork.id}`} className="routes-fork" onClick={pick((e) => jump(e, chapterIds.indexOf(fork.id)))}>
+              <small>CARREFOUR {String(n + 1).padStart(2, "0")}</small>{chapters[chapterIds.indexOf(fork.id)]}
+            </a>
+            {fork.roads.map((name) => (
+              <a key={name} href={`#${name}`} onClick={pick((e) => openRoute(e, name))}><span aria-hidden="true">{SIDES[name].arrow}</span>{SIDES[name].label}</a>
+            ))}
           </div>
         ))}
         <a href="#inscription" className="routes-join" onClick={pick((e) => openRoute(e, "inscription"))}>
-          Rejoindre <span aria-hidden="true">↗</span>
+          Rejoindre <span aria-hidden="true">{"↗\uFE0E"}</span>
         </a>
       </nav>
     </div>
@@ -821,7 +817,6 @@ function App() {
             <h3>Inscription et recensement des membres 2026–2027.</h3>
             <a className="path-action" href={MEMBERSHIP_FORM} target="_blank" rel="noopener noreferrer">M’inscrire / me recenser <span aria-hidden="true">↗</span><small>OUVRIR LE FORMULAIRE GOOGLE</small></a>
             <div className="branch-actions">
-              <a href={INSTAGRAM} target="_blank" rel="noopener noreferrer">Instagram @uossa.aesuo ↗</a>
               <button onClick={() => continueRoad('inscription')}>Continuer la route →</button>
               <button onClick={closeRoute}>← Revenir au carrefour</button>
             </div>
