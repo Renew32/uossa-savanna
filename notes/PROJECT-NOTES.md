@@ -1,0 +1,83 @@
+# Notes du projet — 29 septembre 2026
+
+## Direction et mise en œuvre
+
+Quatre chapitres dans une savane à l’heure dorée, avec identité sénégalaise, lion, téranga et liens entre Dakar et Ottawa. La caméra avance sur 208 unités le long du même tracé sinusoïdal que la route. Elle regarde 16 unités devant elle pour aborder les virages. Le terrain possède un relief doux et la route des ornières et des bordures irrégulières.
+
+Le décor est hybride : route et terrain en maillage 3D, végétation photographique générée sur plans découpés instanciés, herbes géométriques, pierres et particules. Les arbres ont une position dans le monde et une parallaxe réelle ; ce ne sont pas des arbres botaniques entièrement modélisés. Leur orientation suit la caméra. Un seuil alpha évite les halos et le tri des transparences. L’atmosphère distante provient désormais d’un panorama photographique réel : Safari Sunset de Poly Haven.
+
+## Logo Blender
+
+Le JPEG utilisateur 360 × 434 est conservé dans `public/uossa-logo-2026.jpg`. Ses trois régions colorées ont été tracées, avec nettoyage du bruit de pixels avant conversion en courbes Bézier. Les tangentes automatiques lissent les arcs ; les pointes intentionnelles restent anguleuses. Biseaux fins, normales lissées sur les côtés, faces frontales planes. Les courbes éditables sont enregistrées dans le fichier Blender avant conversion pour l’export.
+
+Le GLB final contient uniquement les trois maillages de la scène active et pèse environ 1,39 Mo. Le support et le logo tournent ensemble pour éviter toute intersection. La scène active du `.blend` est la dernière version ; les scènes des essais précédents restent disponibles.
+
+## Choix des bibliothèques et sources
+
+- React 19.3 + [Vite 7.3](https://vite.dev/guide/) : une couche de contenu accessible et une compilation statique simple.
+- [Three.js r180](https://threejs.org/docs/pages/InstancedMesh.html) : contrôle du budget de dessin, géométrie instanciée et shaders sans couche de rendu supplémentaire.
+- [GSAP 3.15 / ScrollTrigger](https://gsap.com/docs/v3/Plugins/ScrollTrigger/) : une progression partagée et des animations réversibles ; une seule timeline possède chaque groupe de lettres.
+- [Lenis 1.3](https://github.com/darkroomengineering/lenis) : défilement fluide sur ordinateur, synchronisé à l’horloge GSAP, sans remplacer le défilement mobile.
+- Blender 5.2 : courbes éditables et export glTF natif pour un logo fidèle et lisse.
+- GLSL personnalisé : vent, brume et particules sans passes de post-traitement. Aucun bloom, profondeur de champ, moteur physique ni ombres dynamiques.
+
+Versions exactes verrouillées dans `package-lock.json`. Three r180 est conservé pour sa compatibilité WebGL ; ce choix ne prétend pas être la dernière version publiée.
+
+## Sources des éléments visuels
+
+- Logo : image fournie par l’utilisateur, conservée sans modification ; modèle dérivé de ses contours.
+- Panorama : généré avec ImageGen, original `savanna-source.png`, version runtime `public/savanna.webp`.
+- Acacia et touffe d’herbe : deux images générées avec ImageGen, sujets isolés au rendu photographique, lumière chaude de fin de journée, converties en WebP avec transparence. Ce ne sont pas des photographies documentaires d’un lieu précis.
+- Terre : [Dry Mud Field 001 — Poly Haven](https://polyhaven.com/a/dry_mud_field_001), textures diffuse et normale OpenGL en 1K, [licence CC0](https://polyhaven.com/license).
+- Barlow Condensed, Cormorant Garamond, Manrope : fichiers locaux, licences dans `font-licenses/`.
+- L’ancien petit logo reste archivé mais n’est pas utilisé dans le site. Le panorama initial demandé sous `/mnt/data/` n’a pas été récupéré.
+
+## Performance et dégradation
+
+Une seule horloge GSAP anime Lenis et Three.js, sans mise à jour React à chaque image. Rendu suspendu dans les onglets cachés. Végétation en quelques appels de dessin, textures locales, aucune requête externe nécessaire en fonctionnement.
+
+DPR plafonné à 1,55 sur ordinateur et 1,15 sur téléphone. Si plus de 28 % des intervalles dépassent 22 ms pendant quatre secondes, le DPR diminue par pas de 0,2 jusqu’à 0,8. Mobile : 55 arbres contre 100, 4 200 touffes contre 12 000, 2 500 brins contre 7 000, 100 particules contre 320. Les petits écrans privilégient le flux de lecture aux compositions fixes.
+
+Le mode réduit fige caméra, vent et particules, désactive les transformations de texte et ne redessine qu’en cas de changement. Une image CSS prend le relais en cas d’échec ou de perte WebGL ; le contenu reste HTML.
+
+## Validation
+
+Compilation de production réussie. Parcours testé dans le navigateur local : navigation vers les racines et retour à l’accueil, toutes les lettres restaurées à opacité 1, logo entier, route et virages visibles. Contrôles à 390 × 844 et 320 × 568 : aucun débordement horizontal. Mode réduit vérifié : caméra fixe, seulement quelques rendus au chargement et lors des changements. Console sans erreur lors du contrôle du décor.
+
+Sur cette machine, les échantillons de 600 intervalles de l’horloge d’animation ont indiqué environ 8 ms de médiane et 9 ms au 95e percentile, sur ordinateur et en simulation mobile. Ce sont des mesures de cadence, pas des temps GPU ni une garantie de 60 fps sur tous les appareils. Aucun test sur téléphone physique ni trace GPU détaillée n’a été réalisé.
+
+Diagnostic local : `document.querySelector('canvas').dataset.performance` fournit les intervalles, appels de dessin, triangles, DPR, mode et position de caméra. Aucune télémétrie n’est envoyée.
+
+Corrections effectuées pendant les essais : suppression des arbres polygonaux, texture de terre réelle, correction de la conversion colorimétrique de la route, nettoyage des contours du logo, export limité à la scène active, rotation commune au support et au logo, timeline unique par titre pour rétablir le retour arrière.
+
+Le build conserve les fichiers déjà présents et identiques pour éviter une restriction locale de réécriture des images jointes. Pour une publication, compiler depuis une extraction neuve du ZIP afin d’obtenir un dossier `build/` sans fichiers historiques.
+
+## Révision du réalisme — 29 septembre
+
+Le ciel généré orangé est remplacé par [Safari Sunset](https://polyhaven.com/a/safari_sunset), photographie panoramique de Dimitrios Savva, traitement de Jarod Guest, licence CC0. Version WebP 4096 × 2048, 1,87 Mo. Projection sphérique correcte ; pas de déformation animée du ciel. Le panorama reste fixe à l’infini et la route conserve son parcours en 3D.
+
+Herbes plus courtes et plus denses près de la route, tailles et largeurs variées, couleur et assombrissement à la base, ombres de contact sous les arbres, brume réduite et plus neutre. Les touffes éloignées sont exclues du rendu au-delà de 125 unités pour réduire le coût. Les acacias et herbes proches restent des éléments générés sur plans découpés : le résultat est un décor hybride, pas une reconstruction photogrammétrique complète. Le panorama montre une savane africaine et n’est pas présenté comme une photographie du Sénégal.
+
+Validation du 29 septembre : compilation réussie, parcours aller-retour dans le navigateur et écran 390 × 844 sans débordement ni erreur console. Cette session mesure environ 33 ms médiane / 34–35 ms p95, soit environ 30 images/s, même après réduction de densité et baisse automatique du DPR. La cause exacte n’a pas été isolée ; les mesures précédentes de 8–9 ms sont historiques et ne valident pas 60 fps pour cette révision.
+
+## Bureau et inscription
+
+Le parcours compte désormais six étapes : esprit, téranga, racines, bureau, inscription, ensemble. La photo de groupe 2026–2027 provient de la publication fournie https://www.instagram.com/p/DdUvimikW-1/ ; crédit photographique indiqué : @posetapierre.visuel. La présentation complète des membres reste accessible dans le carrousel officiel. Aucun nom ni rôle individuel n’a été inventé.
+
+L’étape inscription ouvre le formulaire officiel fourni, intitulé « UOSSA - Inscription et recensement des membres 2026-2027 ». Le lien Instagram permanent en bas à droite mène au profil vérifié dans la publication : https://www.instagram.com/uossa.aesuo/. Ces liens ouvrent un nouvel onglet avec protection noopener/noreferrer. Aucune réponse au formulaire n’a été envoyée.
+
+Validation : compilation réussie, transitions Bureau → Inscription et navigation mobile vérifiées, destinations des trois liens contrôlées, aucun débordement à 390 px ni erreur console.
+
+## Organisation finale : parcours secondaires
+
+Le voyage principal revient à quatre chapitres. Bureau et Inscription sont des destinations distinctes (#bureau, #inscription), présentées dans un écran plein format accessible avec retour explicite. Elles ne prolongent plus le défilement principal. Des panneaux de choix sont proposés à l’accueil et à la fin du voyage ; le menu donne un accès direct. Ce compromis conserve l’immersion de la landing page tout en permettant l’accès rapide aux informations pratiques.
+
+Implémentation : dialogue modal natif (focus contenu, arrière-plan inerte, fermeture Échap), arrêt Lenis et pause du rendu 3D pendant la consultation, historique navigateur et liens directs, restauration de la position de lecture. Liens externes officiels inchangés.
+
+Validation : compilation réussie ; entrée Bureau, passage Inscription, retour au même scrollY (2546 px avant et après), quatre sections dans le trajet principal ; affichage mobile à 390 px sans débordement, fermeture Échap, panneaux d’accueil contrôlés visuellement.
+
+## Galerie du bureau — 29 septembre 2026
+- Les huit images du carrousel officiel https://www.instagram.com/p/DdUvimikW-1/?img_index=1 contiennent des visages et sont maintenant présentées sur le parcours Bureau : couverture de groupe, puis les sept images suivantes dans leur ordre original.
+- Photographies créditées à @posetapierre.visuel. Fichiers locaux WebP, proportions conservées sans recadrage, chargement différé des images de galerie.
+- Agrandissement par dialogue accessible, boutons précédent/suivant et navigation au clavier. Échap ferme uniquement l’agrandissement et conserve le parcours Bureau.
+- Validation : compilation de production réussie ; les sept nouvelles images chargent ; navigation 2 → 3 et fermeture vérifiées ; affichage ordinateur 1440 × 900 et mobile 390 × 844 contrôlés ; aucun débordement horizontal sur mobile et aucune erreur/alerte console dans la session de vérification.
