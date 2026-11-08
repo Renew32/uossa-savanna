@@ -17,7 +17,6 @@ const SIDES = {
   inscription: { fork: "votre-place", join: "ensemble" },
 };
 const sideFromHash = () => (location.hash === "#bureau" || location.hash === "#inscription" ? location.hash.slice(1) : null);
-const TEAM_POST = "https://www.instagram.com/p/DdUvimikW-1/?img_index=1";
 const INSTAGRAM = "https://www.instagram.com/uossa.aesuo/";
 const MEMBERSHIP_FORM = "https://docs.google.com/forms/d/e/1FAIpQLSdVQuKM8SwVUPYUUSURm9zUutTQMpb09Y5CgUI9p-yBa1WDDg/viewform?pli=1";
 const Star = () => (
@@ -748,11 +747,9 @@ function App() {
           <div className="branch-card finale">
             <img className="branch-photo" src={boardImages[0].src} alt="" width="1080" height="607" loading="lazy" />
             <span className="branch-count">{branchTotal} / {branchTotal} · AU BOUT DU CHEMIN</span>
-            <h3>Le bureau exécutif 2026–2027.</h3>
-            <p>Photographies : @posetapierre.visuel</p>
+            <h3>Le bureau exécutif <span className="nowrap">2026–2027.</span></h3>
             <div className="branch-actions">
               <button onClick={() => setPhoto(0)}>Agrandir la photo ↗</button>
-              <a href={TEAM_POST} target="_blank" rel="noopener noreferrer">Découvrir les membres sur Instagram ↗</a>
               <button onClick={() => continueRoad('bureau')}>Continuer la route →</button>
               <a href="#inscription" onClick={(e) => openRoute(e, "inscription")}>Prendre le chemin de l’inscription →</a>
               <button onClick={closeRoute}>← Revenir au carrefour</button>

@@ -1137,7 +1137,9 @@ html[data-chapter="5"] .shade{background-color:#06170b44}
 .route-fork b{position:absolute;right:18px;top:24px;font-weight:400;color:var(--gold)}
 .together .identity{display:none}
 @media(max-width:760px){
- .hero-paths{position:relative;right:auto;bottom:auto;width:auto;margin:0 var(--pad) 110px}
+ /* On a phone this block landed beside the hero, off screen to the right, and widened the page.
+    The same two links stay at the end of the journey (« Ensemble ») and at the crossroads. */
+ .hero-paths{display:none}
  .hero:has(.hero-paths){height:auto;min-height:170svh}
  .hero .chapter-content{height:100svh}
  .route-topbar{padding:15px var(--pad)}.route-topbar>span{display:none}
@@ -1185,6 +1187,7 @@ html[data-chapter="5"] .shade{background-color:#06170b44}
 .fork-arrow.straight:hover .fork-circle{transform:translateY(-6px)}
 @keyframes fork-pulse{0%{box-shadow:0 0 0 0 #e8bd6f55}70%{box-shadow:0 0 0 16px #e8bd6f00}100%{box-shadow:0 0 0 0 #e8bd6f00}}
 .calm .fork-arrows{position:relative;right:auto;bottom:auto;margin-top:40px}
+.nowrap{white-space:nowrap}
 @media(max-width:760px){
  .crossroads h2{font-size:clamp(46px,11vw,72px)}
  /* Two compact buttons side by side, below the text: pushed to the bottom of the screen when
@@ -1195,7 +1198,6 @@ html[data-chapter="5"] .shade{background-color:#06170b44}
  .fork-arrow small{font-size:8px;letter-spacing:.16em;line-height:24px;margin:0 0 3px;padding-left:31px}
  .fork-arrow.right small{padding:0 31px 0 0}
  .fork-arrow em{font-size:10px;letter-spacing:.03em;margin-top:3px}
- .fork-arrow .nowrap{white-space:nowrap}
  .fork-circle{position:absolute;top:8px;left:10px;width:24px;height:24px;font-size:12px}
  .fork-arrow.right .fork-circle{left:auto;right:10px}
  .progress-track{height:118px}
