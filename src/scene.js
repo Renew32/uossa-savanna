@@ -225,7 +225,8 @@ vec3 clay=mix(vec3(.42,.255,.12),vec3(.67,.445,.25),grain*.5+coarse*.25);clay-=(
       const hero=document.querySelector('.hero'),content=hero?.querySelector('.chapter-content'),link=hero?.querySelector('.journey-link'),foot=hero?.querySelector('.hero-bottom');
       const H=innerHeight,W=innerWidth;
       let from=H*.56,to=H*.86;
-      if(content&&link&&foot){from=top(link,content)-top(content,hero)+link.offsetHeight+14;to=top(foot,hero)-10}
+      // (The bottom line is hidden in reduced-motion mode: the band then ends above the bottom bar.)
+      if(content&&link){from=top(link,content)-top(content,hero)+link.offsetHeight+14;to=foot?.offsetParent?top(foot,hero)-10:H-96}
       const height=Math.max(80,to-from),width=Math.min(W*.56,height/1.21),centreY=from+(height-width*1.21)/2+width*1.21*(3.08/6.4);
       const q=standOnRoad(.06,1-2*centreY/H,width/W);
       monument.scale.setScalar(q.scale);monument.position.set(q.x,q.y,q.z);
@@ -351,7 +352,12 @@ vec3 clay=mix(vec3(.42,.255,.12),vec3(.67,.445,.25),grain*.5+coarse*.25);clay-=(
   // device cannot keep up, the picture is held still (one sharp frame) until the next movement.
   const sharpRatio=Math.min(devicePixelRatio,2),prevPos=new THREE.Vector3(1e9,0,0),prevLook=new THREE.Vector3();
   let sharp=false,lastMove=0,lastSharpFrame=0,sharpTicks=0,sharpSlow=0,frozen=false;
-  const canSharpen=()=>sharpRatio>quality+.05;
+  // A tap or a key press drops back to the light density at once, for a moment, so the answer
+  // to the input is never held up by a heavy sharp frame.
+  let calmInputUntil=0;
+  const onInput=()=>{calmInputUntil=performance.now()+1200;if(sharp)setSharp(false)};
+  window.addEventListener('pointerdown',onInput,{capture:true,passive:true});window.addEventListener('keydown',onInput,{capture:true,passive:true});
+  const canSharpen=()=>sharpRatio>quality+.05&&performance.now()>calmInputUntil;
   const setSharp=(on)=>{sharp=on;renderer.setPixelRatio(on?sharpRatio:quality);diagnostic.pixelRatio=on?sharpRatio:quality;sharpTicks=0;sharpSlow=0;frozen=false;needsRender=true};
   const frameSamples=[],diagnostic={frames:0,drawCalls:0,triangles:0,pixelRatio:quality,mobile,calm,frameSamples,camera:camera.position};window.__UOSSA_PERF__=diagnostic;  const resize=()=>{needsRender=true;camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);placeMonument();computeStops()};window.addEventListener('resize',resize);
   const onLost=e=>{e.preventDefault();canvas.style.opacity='0';document.documentElement.classList.add('no-webgl')};canvas.addEventListener('webglcontextlost',onLost);
@@ -409,6 +415,6 @@ vec3 clay=mix(vec3(.42,.255,.12),vec3(.67,.445,.25),grain*.5+coarse*.25);clay-=(
       renderer.render(scene,camera);diagnostic.frames++;diagnostic.drawCalls=renderer.info.render.calls;diagnostic.triangles=renderer.info.render.triangles;previousProgress=p;needsRender=false;
       if(diagnostic.frames%120===0||calm){const sorted=[...frameSamples].sort((a,b)=>a-b);canvas.dataset.performance=JSON.stringify({frames:diagnostic.frames,samples:sorted.length,medianMs:sorted[Math.floor(sorted.length*.5)]||0,p95Ms:sorted[Math.floor(sorted.length*.95)]||0,drawCalls:diagnostic.drawCalls,triangles:diagnostic.triangles,pixelRatio:quality,mobile,calm,camera:[camera.position.x,camera.position.y,camera.position.z],roadCenter:roadX(z),progress:p,side:sd?.route?{route:sd.route,s:sd.s,blend:sd.blend}:null});}
     },
-    dispose(){stopped=true;window.removeEventListener('resize',resize);canvas.removeEventListener('webglcontextlost',onLost);const geometries=new Set(),materials=new Set();scene.traverse(o=>{if(o.geometry)geometries.add(o.geometry);if(o.material)(Array.isArray(o.material)?o.material:[o.material]).forEach(m=>materials.add(m));o.dispose?.()});geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());assetTextures.forEach(t=>t.dispose());panorama.dispose();environment.dispose();renderer.dispose();delete window.__UOSSA_PERF__;}
+    dispose(){stopped=true;window.removeEventListener('resize',resize);window.removeEventListener('pointerdown',onInput,{capture:true});window.removeEventListener('keydown',onInput,{capture:true});canvas.removeEventListener('webglcontextlost',onLost);const geometries=new Set(),materials=new Set();scene.traverse(o=>{if(o.geometry)geometries.add(o.geometry);if(o.material)(Array.isArray(o.material)?o.material:[o.material]).forEach(m=>materials.add(m));o.dispose?.()});geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());assetTextures.forEach(t=>t.dispose());panorama.dispose();environment.dispose();renderer.dispose();delete window.__UOSSA_PERF__;}
   };
 }

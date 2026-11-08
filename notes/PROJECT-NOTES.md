@@ -119,3 +119,15 @@ Objectifs : LCP ≤ 2,5 s, INP < 200 ms, CLS < 0,1. Mesures sur la version de pr
 - CLS : petits décalages des lettres lors du chargement des polices ; total bien sous 0,1.
 - Limites : le rendu 3D tourne en logiciel (SwiftShader) dans ces mesures, plus lent qu’un vrai téléphone ; ce ne sont pas des données de terrain (PageSpeed Insights ou CrUX exigent un site public).
 - Polices réduites au latin (latin de base, Latin-1, Latin étendu A et B, ponctuation, flèches, € et ™), crénage, ligatures et hinting conservés : Barlow 85 → 63 Ko, Cormorant italique 286 → 113 Ko, Manrope 92 → 49 Ko (463 → 225 Ko). Tous les caractères du site restent couverts ; le texte est identique à l’œil (seul l’anticrénelage de Manrope varie au pixel près). Téléphone après cette étape : LCP 1,28 à 1,37 s, INP 56 à 128 ms, CLS 0,013. Les polices complètes restent dans l’historique git (commit précédent).
+
+## Branche `ux-mobile` — 8 novembre 2026
+
+Créée depuis `route-bureau` ; un commit par thème.
+- **Photos nettes à l’arrêt** : densité 1,15 en mouvement, `min(dpr, 2)` quand la caméra est immobile depuis 250 ms (30 images/s, image figée si l’appareil ne suit pas, retour immédiat à la densité légère au toucher). Photos sans assombrissement. Panorama 2048 px (306 Ko) sur téléphone. Les textures JPEG `diff`/`normal` restent telles quelles : leur version WebP n’était pas plus légère.
+- **Photo agrandie** : plein écran sur téléphone, zoom 2,5× au double-toucher ou au bouton, déplacement au doigt, balayage, photos voisines préchargées.
+- **Confort tactile** : libellés à 10–11 px minimum (sauf « Université d’Ottawa » du logo, 8,5 px, et sur-titres des boutons de carrefour, 9,5 px) ; zones d’au moins 44 px ; plus d’effet de survol bloqué ; `viewport-fit=cover` et marges `safe-area`.
+- **Logo 3D** : sur téléphone en portrait, posé sur la route dans la bande libre sous le texte d’accueil (taille calculée d’après la page), il précède la caméra pendant l’accueil puis s’efface en s’enfonçant. Halo chaud, disque plus clair, or plus brillant. Dessin et modèle inchangés.
+- **Téléphone à l’horizontale** : traité comme un téléphone (scène allégée, défilement natif) ; mise en page compacte ; panneaux vus de plus près.
+- **Partage** : Open Graph / Twitter avec image 1200×630, icône d’écran d’accueil, manifeste.
+- Mesures (téléphone simulé, 4G lente, processeur ×4) : LCP 1,21–1,26 s, INP 56–128 ms, CLS 0,015. Ordinateur : LCP 0,36 s, INP 48 ms, CLS 0,013. Toutes les zones tactiles visibles font au moins 44 px ; aucun débordement horizontal ; aucune erreur console.
+- Non vérifié sur un vrai téléphone ; non publié.

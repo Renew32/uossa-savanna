@@ -37,6 +37,14 @@ Défiler pour avancer sur la route ; utiliser les liens pour changer de chapitre
 
 Deux carrefours jalonnent la route. Au premier (« Le carrefour »), la flèche gauche prend la route du bureau exécutif : trois planches de portraits au bord du chemin (à gauche, à droite, à gauche), puis la photo de groupe au bout, au milieu de la route. Au second (« Votre place »), la flèche droite prend la route de l’inscription et du recensement, qui se termine devant le panneau du formulaire. Chaque route annexe se défile comme le parcours principal ; au bout, elle revient rejoindre la route principale (avant « Nos racines » pour le bureau, avant « Ensemble » pour l’inscription). « Retour au carrefour » ou Échap ramène la caméra au carrefour. Le menu « Les chemins », en haut à droite, liste les routes annexes (« Le bureau exécutif », « Inscription & recensement »), puis « Rejoindre » ; il se construit à partir de `SIDES` dans `src/main.jsx` : une nouvelle route annexe y apparaît dès qu’elle y est déclarée. Les liens #bureau et #inscription y conduisent aussi directement.
 
+## Téléphone
+
+- À l’arrêt (devant un panneau, au carrefour, à l’accueil), la scène est rendue à la pleine densité de l’écran (jusqu’à 2) pour des photos nettes, puis revient à une densité plus légère dès que la caméra bouge ou qu’on touche l’écran.
+- Photo agrandie : plein écran, double-toucher pour zoomer à 2,5× et se déplacer dans la photo, balayage pour changer de photo.
+- Sur l’accueil, le logo 3D se tient sur la route sous le texte et précède la caméra, puis on le dépasse en entrant dans le chapitre suivant.
+- Mise en page dédiée au téléphone tenu à l’horizontale ; zones tactiles d’au moins 44 px ; marges pour l’encoche et la barre d’accueil.
+- Aperçu au partage (image `public/og-image.jpg`, adresse absolue dans `index.html`) et icône d’écran d’accueil.
+
 ## Choix des outils
 
 - **React + Vite** : contenu accessible en HTML, développement rapide et livraison statique portable.
