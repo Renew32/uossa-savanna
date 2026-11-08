@@ -4,7 +4,9 @@ import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import Lenis from "lenis";
 import "lenis/dist/lenis.css";
-import { createSavanna } from "./scene.js";
+// The 3D scene (and three.js) loads alongside the first render instead of before it:
+// the text of the page can paint without waiting for the largest script.
+const sceneModule = import("./scene.js");
 import { START_Z, END_Z, TRAVEL, FORK_Z, JOIN_Z, SIDE_PATHS, SIDE_SCREENS, EXIT_SCREENS } from "./route.js";
 import "./style.css";
 
@@ -156,6 +158,15 @@ function App() {
     ),
     [ready, setReady] = useState(false);
   useEffect(() => { document.documentElement.dataset.chapter = String(chapter); }, [chapter]);
+  // The button answers at once; the scene is rebuilt for the new mode only after that frame
+  // has been painted, so the click never waits for the rebuild.
+  const [calmShown, setCalmShown] = useState(calm);
+  useEffect(() => setCalmShown(calm), [calm]);
+  const toggleCalm = () => {
+    const next = !calmShown;
+    setCalmShown(next);
+    requestAnimationFrame(() => setTimeout(() => setCalm(next), 0));
+  };
   useEffect(() => {
     const mq = matchMedia("(prefers-reduced-motion: reduce)");
     const update = () => setCalm(mq.matches);
@@ -170,12 +181,16 @@ function App() {
     const state = { progress: 0, pointer: { x: 0, y: 0 }, reduced: calm,
       side: { route: null, blend: 0, u: 0, target: 0, snap: false, arrived: false } };
     stateRef.current = state; calmRef.current = calm;
-    const scene = createSavanna(canvas.current, state, {
-      mobile,
-      calm,
-      onReady: () => {
-        if (!disposed) setReady(true);
-      },
+    let scene = null;
+    sceneModule.then(({ createSavanna }) => {
+      if (disposed) return;
+      scene = createSavanna(canvas.current, state, {
+        mobile,
+        calm,
+        onReady: () => {
+          if (!disposed) setReady(true);
+        },
+      });
     });
     if (!calm && !mobile) {
       lenis = new Lenis({ duration: 1.15, smoothWheel: true });
@@ -822,15 +837,15 @@ function App() {
         <div className="bottom-actions">
         <button
           className="motion-button"
-          aria-pressed={calm}
-          onClick={() => setCalm((v) => !v)}
+          aria-pressed={calmShown}
+          onClick={toggleCalm}
         >
-          <span className={`motion-icon ${calm ? "paused" : ""}`}>
+          <span className={`motion-icon ${calmShown ? "paused" : ""}`}>
             <i />
             <i />
             <i />
           </span>
-          {calm ? "Animation réduite" : "Animation complète"}
+          {calmShown ? "Animation réduite" : "Animation complète"}
         </button>
         <a className="instagram-link" href={INSTAGRAM} target="_blank" rel="noopener noreferrer" aria-label="Notre Instagram : @uossa.aesuo">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r=".8" fill="currentColor" stroke="none"/></svg><span>Instagram</span><span aria-hidden="true">↗</span>

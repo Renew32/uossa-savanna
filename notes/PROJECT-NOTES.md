@@ -102,3 +102,19 @@ Validation : compilation réussie ; entrée Bureau, passage Inscription, retour 
 - Routes annexes sans lien Instagram : retiré de la fiche finale de l’inscription (le lien du coin inférieur droit reste).
 - Menu « Les chemins » : il remplace le bouton « Rejoindre » dans l’en-tête, qui devient la dernière entrée du menu. Il liste les routes annexes dans l’ordre du parcours (ni les carrefours ni la route principale n’y figurent). La liste est construite à partir de `SIDES` dans `src/main.jsx`. Il se ferme avec Échap, un clic à côté ou en quittant le menu au clavier. Les sept entrées ont été vérifiées sur ordinateur et téléphone, sans erreur console.
 - Validation : captures Chrome en mode téléphone (390 × 844 et 390 × 664) et ordinateur (1440 × 900) des deux carrefours et des quatre arrêts du bureau ; positions mesurées à 360 × 640, 375 × 553 et 430 × 750 (aucun chevauchement, aucun débordement dans les boutons) ; aucune erreur console.
+
+## Signaux web essentiels — 8 novembre 2026
+
+Objectifs : LCP ≤ 2,5 s, INP < 200 ms, CLS < 0,1. Mesures sur la version de production (`npm run build` puis `npm run preview`), Chrome sans interface piloté par le protocole DevTools. Profil téléphone proche de Lighthouse : 412 × 823, processeur ralenti ×4, 4G lente (150 ms, 1,6 Mbit/s). Interactions réelles : menu, défilement, chapitre, carrefour, photo, Échap, retour, bouton d’animation.
+
+| | Avant | Après |
+|---|---|---|
+| Téléphone — LCP | 2,49 s | 1,58 à 1,82 s |
+| Téléphone — INP | 1 208 ms (bouton d’animation) | 96 à 152 ms |
+| Téléphone — CLS | 0,012 | 0,012 |
+| Ordinateur — LCP / INP / CLS | — | 0,52 à 0,64 s / 48 à 64 ms / 0,013 |
+
+- LCP : le texte du titre attendait three.js (135 Ko compressés) avant de s’afficher. La scène 3D (`scene.js` et three.js) est maintenant chargée en parallèle du premier rendu (`import()` dynamique) ; le texte s’affiche sans l’attendre.
+- INP : le bouton « Animation complète / réduite » reconstruisait toute la scène avant le rafraîchissement de l’écran. Le bouton change d’état tout de suite, et la reconstruction a lieu après l’image suivante.
+- CLS : petits décalages des lettres lors du chargement des polices ; total bien sous 0,1.
+- Limites : le rendu 3D tourne en logiciel (SwiftShader) dans ces mesures, plus lent qu’un vrai téléphone ; ce ne sont pas des données de terrain (PageSpeed Insights ou CrUX exigent un site public). Piste non faite : réduire les polices TTF (Cormorant italique 287 Ko) à l’alphabet latin.
