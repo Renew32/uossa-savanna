@@ -1078,7 +1078,7 @@ footer {
 .logo-fallback .hero-emblem-fallback{display:block;position:absolute;right:14%;top:27svh;width:180px;border-radius:50%}
 @media(max-width:760px){.shade{background:linear-gradient(90deg,#09180ec7,#111d1255 65%,#14221822),linear-gradient(0deg,#0a180fb0,transparent 50%,#11190f44)}.logo-fallback .hero-emblem-fallback{width:105px;top:15svh;right:12%}}
 .shade::after{content:'';position:absolute;inset:0;background:linear-gradient(270deg,rgba(6,19,12,.67),rgba(6,19,12,.34) 50%,transparent 90%);opacity:0;transition:opacity .8s ease}
-html[data-chapter='3'] .shade::after,html[data-chapter='4'] .shade::after{opacity:1}
+html[data-chapter='3'] .shade::after,html[data-chapter='5'] .shade::after{opacity:1}
 .chapter h1,.chapter h2{text-shadow:0 3px 30px #06170c55}
 
 /* Two new stops on the continuous savanna journey. */
@@ -1100,7 +1100,7 @@ html[data-chapter='3'] .shade::after,html[data-chapter='4'] .shade::after{opacit
 .instagram-link{display:flex;align-items:center;gap:9px;min-height:40px;padding:8px 13px;border:1px solid #d8c39566;border-radius:30px;background:#142d22ed;text-decoration:none;font-size:11px}
 .instagram-link svg{width:18px;height:18px}
 .instagram-link:hover{border-color:var(--gold);color:var(--gold)}
-html[data-chapter="4"] .shade{background-color:#06170b44}
+html[data-chapter="5"] .shade{background-color:#06170b44}
 @media(max-width:900px){.bureau-content{gap:24px}.top-nav{gap:16px}.bureau h2{font-size:52px}}
 @media(max-width:760px){
  .bureau-content{display:flex;flex-direction:column;justify-content:center;align-items:stretch;gap:20px;padding:90px var(--pad) 90px}
@@ -1182,6 +1182,7 @@ html[data-chapter="4"] .shade{background-color:#06170b44}
 .fork-circle{display:grid;place-items:center;flex-shrink:0;width:78px;height:78px;border-radius:50%;border:1px solid #e8bd6f99;background:#0f2a1fcc;color:var(--gold);font-size:30px;box-shadow:0 0 0 0 #e8bd6f55;transition:transform .3s,background .3s;animation:fork-pulse 2.4s ease-out infinite}
 .fork-arrow.left:hover .fork-circle{transform:translateX(-6px);background:#224a36}
 .fork-arrow.right:hover .fork-circle{transform:translateX(6px);background:#224a36}
+.fork-arrow.straight:hover .fork-circle{transform:translateY(-6px)}
 @keyframes fork-pulse{0%{box-shadow:0 0 0 0 #e8bd6f55}70%{box-shadow:0 0 0 16px #e8bd6f00}100%{box-shadow:0 0 0 0 #e8bd6f00}}
 .calm .fork-arrows{position:relative;right:auto;bottom:auto;margin-top:40px}
 @media(max-width:760px){
@@ -1224,16 +1225,24 @@ html[data-chapter="4"] .shade{background-color:#06170b44}
 .branch-card.finale h3{font:italic 500 clamp(30px,3.4vw,46px)/1.05 Cormorant,Georgia,serif;color:var(--gold);margin:0 0 8px}
 .branch-card.finale p{font-size:11px;opacity:.75;margin:0}
 .branch-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:0 10px}
+.branch-card.finale .path-action{margin:14px auto 2px;font-size:17px;text-align:left}
+.branch-card.finale.long-title h3{font-size:clamp(24px,2.4vw,34px)}
+/* The last screens of a side road: the camera drives back onto the main road. */
+.branch-exit{align-items:center;justify-content:center;padding-bottom:0}
+.exit-hint{display:flex;align-items:center;gap:16px;font-size:17px;text-shadow:0 2px 14px #06170caa}
+.exit-hint small{display:block;font-size:10px;letter-spacing:.18em;color:var(--gold);margin-bottom:6px}
 /* Reduced motion or no WebGL: the photos are shown in the cards themselves. */
 .calm .branch-layer,.no-webgl .branch-layer{background:linear-gradient(115deg,#10271ef5,#14251ce8),url('/textures/safari-sunset.webp') center/cover fixed}
 .calm .branch-photo,.no-webgl .branch-photo{display:block}
 .calm .branch-stop,.no-webgl .branch-stop{height:auto;min-height:0;padding-top:30px;padding-bottom:30px;justify-content:center}
 .calm .branch-intro,.no-webgl .branch-intro{min-height:70dvh}
 .calm .branch-card,.no-webgl .branch-card{width:min(760px,92vw)}
+.calm .branch-exit,.no-webgl .branch-exit{display:none}
 @media(max-width:760px){
  .branch-topbar{padding:15px var(--pad)}.branch-topbar>span{display:none}
  .branch-stop,.branch-stop.card-right{justify-content:center;padding-bottom:9svh}
  .branch-card{padding:16px 18px}.branch-card figcaption{font-size:13px}
  .branch-card.intro h2{font-size:52px}
  .branch-card.finale{padding:16px}.branch-actions a,.branch-actions button{font-size:11px;padding:10px 12px;margin-top:10px}
+ .branch-card.finale .path-action{font-size:15px;padding:13px 16px}
 }

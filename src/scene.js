@@ -1,10 +1,12 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-import { START_Z, TRAVEL, ROAD_HALF_WIDTH, roadX, roadSlope, roadHeight, terrainHeight, FORK_Z, BRANCH_LENGTH, BRANCH_SPACING, BRANCH_FIRST_PHOTO, BRANCH_SIDE_PHOTOS, BRANCH_FINALE, branchX, branchSlope, branchZ } from './route.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { START_Z, TRAVEL, END_Z, ROAD_HALF_WIDTH, roadX, roadSlope, roadHeight, terrainHeight, roadDistance, SIDE_PATHS, EXIT_SCREENS } from './route.js';
 
-// Executive-board photos shown along the left-hand track (same order as the HTML captions).
-export const BRANCH_IMAGES = ['/bureau/02.webp','/bureau/03.webp','/bureau/04.webp','/bureau/05.webp','/bureau/06.webp','/bureau/07.webp','/bureau/08.webp','/bureau-2026-2027.webp'];
+// Executive-board photos along the bureau road (same order as the HTML captions), then the group photo.
+export const BUREAU_IMAGES = ['/bureau/02.webp','/bureau/03.webp','/bureau/04.webp','/bureau/05.webp','/bureau/06.webp','/bureau/07.webp','/bureau/08.webp'];
+const GROUP_PHOTO = '/bureau-2026-2027.webp', LOGO = '/uossa-logo-2026.jpg';
 
 export function createSavanna(canvas, state, { mobile, calm, onReady }) {
   let renderer;
@@ -29,37 +31,35 @@ export function createSavanna(canvas, state, { mobile, calm, onReady }) {
   function ready(){needsRender=true;if(++loaded>=2&&!stopped)onReady();}
   let seed = 8291;
   const rand = () => { seed = seed * 16807 % 2147483647; return (seed - 1) / 2147483646; };
-  const dummy = new THREE.Object3D(), color = new THREE.Color();
-  const onBranch = z => z <= FORK_Z && z >= FORK_Z - BRANCH_LENGTH - 10;
-  // Keep scattered props off both tracks: push them clear of the branch, or hide them.
+  const dummy = new THREE.Object3D();
   const HIDDEN = -200;
-  function clearX(x, z, clear) {
-    if (!onBranch(z)) return x;
-    const bx = branchX(z), db = x - bx;
-    if (Math.abs(db) >= clear) return x;
-    const nx = bx + (db < 0 ? -1 : 1) * (2 * clear - Math.abs(db));
-    return Math.abs(nx - roadX(z)) >= clear ? nx : null;
-  }
-  // A point beside the branch, rejected if it would land on the main road.
-  function branchSpot(dist, clear) {
-    const z = branchZ(rand() * (BRANCH_LENGTH + 12)), x = branchX(z) + (rand() > .5 ? 1 : -1) * dist;
-    return Math.abs(x - roadX(z)) >= clear ? [x, z] : null;
-  }
   const add = o => {scene.add(o);return o;};
+  const paths = Object.entries(SIDE_PATHS), pathLength = paths.reduce((sum, [, p]) => sum + p.L, 0);
+  // A random point beside one of the side roads (picked in proportion to their length).
+  const sidePoint = {};
+  function besideSideRoad(dist) {
+    let r = rand() * pathLength, path = paths[0][1];
+    for (const [, p] of paths) { if (r < p.L) { path = p; break; } r -= p.L; }
+    const a = path.at(rand() * path.L, sidePoint), side = rand() > .5 ? 1 : -1;
+    return [a.x + a.dz * side * dist, a.z - a.dx * side * dist];
+  }
 
   // Distant photographic atmosphere only; the road and the near landscape are meshes.
   const panorama = new THREE.TextureLoader().load('/textures/safari-sunset.webp',ready,undefined,ready);panorama.colorSpace=THREE.SRGBColorSpace;
   const skyMat = new THREE.ShaderMaterial({toneMapped:false,side:THREE.BackSide,depthWrite:false,uniforms:{map:{value:panorama},time:{value:0},pointer:{value:new THREE.Vector2()}},vertexShader:`varying vec3 direction;void main(){direction=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,fragmentShader:`uniform sampler2D map;uniform float time;uniform vec2 pointer;varying vec3 direction;void main(){vec3 d=normalize(direction);vec2 uv=vec2(fract(.5+atan(d.x,-d.z)/6.28318),.5+asin(clamp(d.y,-1.,1.))/3.14159265);vec3 col=texture2D(map,uv).rgb;gl_FragColor=vec4(col,1.);\n#include <tonemapping_fragment>\n#include <colorspace_fragment>\n}`});
   const sky = add(new THREE.Mesh(new THREE.SphereGeometry(440,40,24),skyMat));sky.frustumCulled=false;
 
-  const groundGeometry = new THREE.PlaneGeometry(300,440,mobile?52:90,mobile?90:150);groundGeometry.rotateX(-Math.PI/2);groundGeometry.translate(0,0,-100);
+  // The ground reaches far enough around both side roads that its edge never shows.
+  const GROUND = { x0: -250, x1: 210, z0: 130, z1: END_Z - 165 };
+  const groundW = GROUND.x1 - GROUND.x0, groundD = GROUND.z0 - GROUND.z1;
+  const groundGeometry = new THREE.PlaneGeometry(groundW,groundD,mobile?76:136,mobile?92:160);groundGeometry.rotateX(-Math.PI/2);groundGeometry.translate((GROUND.x0+GROUND.x1)/2,0,(GROUND.z0+GROUND.z1)/2);
   const gp=groundGeometry.attributes.position;
   for(let i=0;i<gp.count;i++)gp.setY(i,terrainHeight(gp.getX(i),gp.getZ(i)));
   groundGeometry.computeVertexNormals();
   const assetTextures=[];
-  const texture=(path,color=false)=>{const t=new THREE.TextureLoader().load(path,()=>{needsRender=true});t.colorSpace=color?THREE.SRGBColorSpace:THREE.NoColorSpace;t.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());assetTextures.push(t);return t;};
+  const texture=(path,color=false)=>{const t=new THREE.TextureLoader().load(path,()=>{needsRender=true;if(!stopped)renderer.initTexture(t)});t.colorSpace=color?THREE.SRGBColorSpace:THREE.NoColorSpace;t.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());assetTextures.push(t);return t;};
   const soil=texture('/textures/diff.jpg',true),normal=texture('/textures/normal.jpg');
-  for(const t of [soil,normal]){t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(75,110)}
+  for(const t of [soil,normal]){t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(groundW/4,groundD/4)}
   const terrainMat = new THREE.MeshStandardMaterial({color:'#b1a47d',map:soil,normalMap:normal,normalScale:new THREE.Vector2(.65,.65),roughness:1,envMapIntensity:.1});
   terrainMat.onBeforeCompile = shader => {
     shader.vertexShader=shader.vertexShader.replace('#include <common>','#include <common>\nvarying vec3 vTerrain;').replace('#include <begin_vertex>','#include <begin_vertex>\nvTerrain=position;');
@@ -67,36 +67,82 @@ export function createSavanna(canvas, state, { mobile, calm, onReady }) {
   };
   add(new THREE.Mesh(groundGeometry,terrainMat));
 
-  // Broad red-earth track, twin worn ruts and ragged shoulders. The same curve drives the camera.
-  function buildRoad(centerAt, slopeAt, zFrom, zTo, rows, lift){
-    const columns=20, roadPositions=[], roadUV=[], roadIndices=[];
+  // Broad red-earth tracks, twin worn ruts and ragged shoulders. The same curves drive the camera.
+  // A side road never writes depth and fades out inside the main road, so at each junction the
+  // main road stays whole and the side road simply emerges from its shoulder.
+  function roadMaterial(sideRoad){
+    return new THREE.ShaderMaterial({transparent:true,depthWrite:!sideRoad,side:THREE.DoubleSide,defines:sideRoad?{SIDE_ROAD:1}:{},uniforms:{soil:{value:soil}},
+      vertexShader:`varying vec2 vUv;varying float depth;varying vec3 vWorld;void main(){vUv=uv;vWorld=position;vec4 mv=modelViewMatrix*vec4(position,1.);depth=-mv.z;gl_Position=projectionMatrix*mv;}`,
+      fragmentShader:`uniform sampler2D soil;varying vec2 vUv;varying float depth;varying vec3 vWorld;float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+void main(){float grain=hash(floor(vUv*vec2(190.,70.)));float coarse=hash(floor(vUv*vec2(19.,12.)));float rut1=exp(-pow((vUv.x-.29-sin(vUv.y*.51)*.012)/(.04+.012*sin(vUv.y*.73)),2.));float rut2=exp(-pow((vUv.x-.71-sin(vUv.y*.51)*.012)/(.04+.01*cos(vUv.y*.83)),2.));float ridges=sin(vUv.y*105.)*.015;float edge=abs(vUv.x-.5)*2.;float alpha=1.-smoothstep(.78+coarse*.07,1.,edge);
+#ifdef SIDE_ROAD
+float t=(${START_Z.toFixed(1)}-vWorld.z)*.026;alpha*=smoothstep(1.,2.2,abs(vWorld.x-(9.*sin(t)-4.5*sin(2.*t))));if(alpha<.01)discard;
+#endif
+vec3 clay=mix(vec3(.42,.255,.12),vec3(.67,.445,.25),grain*.5+coarse*.25);clay-=(rut1+rut2)*vec3(.085,.065,.033);clay=mix(clay,texture2D(soil,vec2(vUv.x*1.3,vUv.y)).rgb*vec3(1.1,.91,.72),.82);clay-=(rut1+rut2)*.065;clay+=ridges*.3;float fog=1.-exp(-pow(depth*.0045,2.));gl_FragColor=vec4(mix(clay,vec3(.445,.413,.31),fog),alpha);
+#include <tonemapping_fragment>
+#include <colorspace_fragment>
+}`});
+  }
+  // sampler(s) gives the centre line and its direction; the strip is built across its right-hand normal.
+  function roadStrip(sampler, sFrom, sTo, rows, lift, columns=20){
+    const positions=[], uvs=[], indices=[], c={x:0,z:0,dx:0,dz:-1};
     for(let i=0;i<=rows;i++){
-      const z=zFrom-i/rows*(zFrom-zTo), center=centerAt(z), slope=slopeAt(z), norm=Math.sqrt(1+slope*slope);
+      const s=sFrom+i/rows*(sTo-sFrom);sampler(s,c);
       for(let j=0;j<=columns;j++){
         const across=j/columns*2-1, offset=across*ROAD_HALF_WIDTH;
-        const x=center+offset/norm, zz=z-offset*slope/norm;
-        roadPositions.push(x,roadHeight(zz)+lift+0.035*(1-across*across),zz);roadUV.push(j/columns,(65-z)/4);
-        if(i<rows&&j<columns){const a=i*(columns+1)+j,b=a+columns+1;roadIndices.push(a,b,a+1,b,b+1,a+1)}
+        const x=c.x-c.dz*offset, zz=c.z+c.dx*offset;
+        positions.push(x,roadHeight(zz)+lift+0.035*(1-across*across),zz);uvs.push(j/columns,s/4);
+        if(i<rows&&j<columns){const a=i*(columns+1)+j,b=a+columns+1;indices.push(a,b,a+1,b,b+1,a+1)}
       }
     }
-    const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(roadPositions,3));geo.setAttribute('uv',new THREE.Float32BufferAttribute(roadUV,2));geo.setIndex(roadIndices);geo.computeVertexNormals();return geo;
+    const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));geo.setAttribute('uv',new THREE.Float32BufferAttribute(uvs,2));geo.setIndex(indices);geo.computeVertexNormals();return geo;
   }
-  const roadGeo=buildRoad(roadX,roadSlope,65,-265,420,.008);
-  const roadMat=new THREE.ShaderMaterial({transparent:true,depthWrite:true,side:THREE.DoubleSide,uniforms:{time:{value:0},soil:{value:soil}},vertexShader:`varying vec2 vUv;varying float depth;void main(){vUv=uv;vec4 mv=modelViewMatrix*vec4(position,1.);depth=-mv.z;gl_Position=projectionMatrix*mv;}`,fragmentShader:`uniform sampler2D soil;varying vec2 vUv;varying float depth;float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}void main(){float grain=hash(floor(vUv*vec2(190.,70.)));float coarse=hash(floor(vUv*vec2(19.,12.)));float rut1=exp(-pow((vUv.x-.29-sin(vUv.y*.51)*.012)/(.04+.012*sin(vUv.y*.73)),2.));float rut2=exp(-pow((vUv.x-.71-sin(vUv.y*.51)*.012)/(.04+.01*cos(vUv.y*.83)),2.));float ridges=sin(vUv.y*105.)*.015;float edge=abs(vUv.x-.5)*2.;float alpha=1.-smoothstep(.78+coarse*.07,1.,edge);vec3 clay=mix(vec3(.42,.255,.12),vec3(.67,.445,.25),grain*.5+coarse*.25);clay-=(rut1+rut2)*vec3(.085,.065,.033);clay=mix(clay,texture2D(soil,vec2(vUv.x*1.3,vUv.y)).rgb*vec3(1.1,.91,.72),.82);clay-=(rut1+rut2)*.065;clay+=ridges*.3;float fog=1.-exp(-pow(depth*.0045,2.));gl_FragColor=vec4(mix(clay,vec3(.445,.413,.31),fog),alpha);\n#include <tonemapping_fragment>\n#include <colorspace_fragment>\n}`});
-  const road=add(new THREE.Mesh(roadGeo,roadMat));road.renderOrder=1;
-  // The left-hand track sits a hair below the main road and is drawn first, so the
-  // main road's soft shoulders blend over it where the two surfaces meet at the fork.
-  const branchRoad=add(new THREE.Mesh(buildRoad(branchX,branchSlope,FORK_Z+2,FORK_Z-BRANCH_LENGTH,260,.004),roadMat));branchRoad.renderOrder=.9;
+  const mainAt=(s,out)=>{const z=65-s,k=roadSlope(z),n=Math.hypot(k,1);out.x=roadX(z);out.z=z;out.dx=-k/n;out.dz=-1/n;return out};
+  const mainLength=65-(END_Z-110);
+  const road=add(new THREE.Mesh(roadStrip(mainAt,0,mainLength,Math.round(mainLength/.79),.008),roadMaterial(false)));road.renderOrder=1;
+  const sideRoadMat=roadMaterial(true);
+  // Side roads are only seen up close on their own stretch: a lighter mesh is enough.
+  for(const [,path] of paths){const m=add(new THREE.Mesh(roadStrip(path.at,0,path.L,Math.ceil(path.L),.008,12),sideRoadMat));m.renderOrder=.9;}
 
-  // Grass tufts placed against the road curve, never through its driving corridor.
+  // ── Boards along the side roads, laid out first so the vegetation can keep their views clear. ──
+  const lateral=mobile?3.9:4.6, boards=[], cones=[];
+  for(const [name,path] of paths){
+    path.boards.forEach((b,i)=>{
+      const a=path.at(b.s,{}),x=a.x+a.dz*lateral*b.side,z=a.z-a.dx*lateral*b.side,face=path.at(b.s-9,{}),eye=path.at(b.s-11,{});
+      boards.push({name,x,z,width:4.4,post:1.15,faceX:face.x,faceZ:face.z,src:BUREAU_IMAGES[i],s:b.s,side:b.side});
+      cones.push({ax:eye.x,az:eye.z,bx:x,bz:z,r:2.9});
+    });
+    const f=path.finale,width=name==='bureau'?7.2:6.4;
+    boards.push({name,finale:true,x:f.x,z:f.z,width,post:name==='bureau'?1.35:1.3,faceX:f.x-f.dx*10,faceZ:f.z-f.dz*10,src:name==='bureau'?GROUP_PHOTO:null});
+    cones.push({ax:f.x-f.dx*19,az:f.z-f.dz*19,bx:f.x,bz:f.z,r:width/2+.8});
+  }
+  // Signposts stand in the wedge between the main road and each side road, facing the crossroads.
+  const posts=paths.map(([name,path])=>{const a=path.at(20,{}),x=(a.x+roadX(a.z))/2,z=a.z,fx=roadX(path.forkZ);cones.push({ax:fx,az:path.forkZ,bx:x,bz:z,r:1.8});return{name,x,z,faceX:fx,faceZ:path.forkZ}});
+  // True when a prop at (x, z) would stand between a board and the spot it is looked at from.
+  function blocksView(x,z,half,fromEye){
+    for(const c of cones){
+      const vx=c.bx-c.ax,vz=c.bz-c.az,t=((x-c.ax)*vx+(z-c.az)*vz)/(vx*vx+vz*vz);
+      if(t<(fromEye?0:.35)||t>1)continue;
+      const px=c.ax+vx*t-x,pz=c.az+vz*t-z,r=1+(c.r-1)*t+half;
+      if(px*px+pz*pz<r*r)return true;
+    }
+    return false;
+  }
+  const mainZ=(from,to)=>from-rand()*(from-to);
+
+  // Grass tufts placed against the road curves, never through a driving corridor.
   const grassGeometry=new THREE.InstancedBufferGeometry();
   grassGeometry.setAttribute('position',new THREE.Float32BufferAttribute([-.025,0,0,.025,0,0,-.018,.5,0,.018,.5,0,0,1,0],3));grassGeometry.setIndex([0,1,2,2,1,3,2,3,4]);
-  const mainGrass=mobile?2500:7000, grassCount=mainGrass+(mobile?700:1800), offsets=new Float32Array(grassCount*3),sizes=new Float32Array(grassCount),angles=new Float32Array(grassCount);
+  const mainGrass=mobile?2800:7900, grassCount=mainGrass+(mobile?800:2200), offsets=new Float32Array(grassCount*3),sizes=new Float32Array(grassCount),angles=new Float32Array(grassCount);
   for(let i=0;i<grassCount;i++){
-    let x,z;
-    if(i<mainGrass){z=52-rand()*302;const sign=rand()>.5?1:-1, distance=3.25+Math.pow(rand(),1.7)*69;x=clearX(roadX(z)+sign*distance,z,3.25);}
-    else{const spot=branchSpot(3.25+Math.pow(rand(),1.7)*30,3.25);x=spot?.[0]??null;z=spot?.[1]??0;}
-    offsets.set(x===null?[0,HIDDEN,z]:[x,terrainHeight(x,z),z],i*3);sizes[i]=.10+rand()*.24;angles[i]=rand()*Math.PI*2;
+    let spot=null;
+    for(let k=0;k<5&&!spot;k++){
+      let x,z;
+      if(i<mainGrass){z=mainZ(52,END_Z-95);x=roadX(z)+(rand()>.5?1:-1)*(3.25+Math.pow(rand(),1.7)*69);}
+      else [x,z]=besideSideRoad(3.25+Math.pow(rand(),1.7)*30);
+      if(roadDistance(x,z)>=3.25)spot=[x,z];
+    }
+    offsets.set(spot?[spot[0],terrainHeight(spot[0],spot[1]),spot[1]]:[0,HIDDEN,0],i*3);sizes[i]=.10+rand()*.24;angles[i]=rand()*Math.PI*2;
   }
   grassGeometry.setAttribute('offset',new THREE.InstancedBufferAttribute(offsets,3));grassGeometry.setAttribute('size',new THREE.InstancedBufferAttribute(sizes,1));grassGeometry.setAttribute('angle',new THREE.InstancedBufferAttribute(angles,1));
   const grassMat=new THREE.ShaderMaterial({side:THREE.DoubleSide,uniforms:{time:{value:0},pointer:{value:new THREE.Vector2()}},vertexShader:`attribute vec3 offset;attribute float size;attribute float angle;uniform float time;uniform vec2 pointer;varying float h;varying float depth;varying float variation;void main(){vec3 p=position;p.y*=size;float wind=sin(time*1.1+offset.x*.22+offset.z*.15)*.18+pointer.x*.035;p.x+=position.y*position.y*wind;p.xz=mat2(cos(angle),-sin(angle),sin(angle),cos(angle))*p.xz;p+=offset;vec4 mv=modelViewMatrix*vec4(p,1.);h=position.y;variation=fract(offset.x*.74+offset.z*.37);depth=-mv.z;gl_Position=projectionMatrix*mv;}`,fragmentShader:`varying float h;varying float depth;varying float variation;void main(){vec3 col=mix(vec3(.16,.17,.045),vec3(.69,.52,.20),h);col*=.75+variation*.4;float fog=1.-exp(-pow(depth*.0045,2.));gl_FragColor=vec4(mix(col,vec3(.445,.413,.31),fog),1.);}`});
@@ -104,17 +150,23 @@ export function createSavanna(canvas, state, { mobile, calm, onReady }) {
 
   // Photographic alpha-tested vegetation, instanced in world space for real parallax.
   // Depth-writing cutouts avoid translucent sorting and limit mobile overdraw.
-  function vegetation(path,mainCount,isTree,branchCount){
+  function vegetation(path,mainCount,isTree,sideCount){
     const map=texture(path,true),geo=new THREE.InstancedBufferGeometry();
     geo.setAttribute('position',new THREE.Float32BufferAttribute([-.5,0,0,.5,0,0,-.5,1,0,.5,1,0],3));geo.setAttribute('uv',new THREE.Float32BufferAttribute([0,0,1,0,0,1,1,1],2));geo.setIndex([0,1,2,2,1,3]);
-    const count=mainCount+branchCount, clear=isTree?9:3.15;
+    const count=mainCount+sideCount, clear=isTree?9:3.15;
     const offsets=new Float32Array(count*3),scales=new Float32Array(count*2),variants=new Float32Array(count);
     for(let i=0;i<count;i++){
-      let x,z;
-      const dist=isTree?9+Math.pow(rand(),1.6)*65:3.15+Math.pow(rand(),2)*24;
-      if(i<mainCount){z=45-rand()*325;const side=i%2?1:-1;x=clearX(roadX(z)+side*dist,z,clear);}
-      else{const spot=branchSpot(isTree?9+Math.pow(rand(),1.6)*30:dist,clear);x=spot?.[0]??null;z=spot?.[1]??0;}
-      offsets.set(x===null?[0,HIDDEN,z]:[x,terrainHeight(x,z)-.08,z],i*3);const h=isTree?4.5+rand()*5:.48+Math.pow(rand(),1.7)*.75;scales.set([h*(isTree?1.35+rand()*.45:1.6+rand()*.8),h],i*2);variants[i]=rand();
+      let spot=null,h=1,w=1;
+      for(let k=0;k<6&&!spot;k++){
+        h=isTree?4.5+rand()*5:.48+Math.pow(rand(),1.7)*.75;w=h*(isTree?1.35+rand()*.45:1.6+rand()*.8);
+        let x,z;
+        if(i<mainCount){z=mainZ(45,END_Z-120);x=roadX(z)+(i%2?1:-1)*(isTree?9+Math.pow(rand(),1.6)*65:3.15+Math.pow(rand(),2)*24);}
+        else [x,z]=besideSideRoad(isTree?9+Math.pow(rand(),1.6)*30:3.15+Math.pow(rand(),2)*24);
+        if(roadDistance(x,z)<clear)continue;
+        if((isTree||h>.8)&&blocksView(x,z,w*(isTree?.4:.5),isTree))continue;
+        spot=[x,z];
+      }
+      offsets.set(spot?[spot[0],terrainHeight(spot[0],spot[1])-.08,spot[1]]:[0,HIDDEN,0],i*3);scales.set([w,h],i*2);variants[i]=rand();
     }
     geo.setAttribute('offset',new THREE.InstancedBufferAttribute(offsets,3));geo.setAttribute('scale',new THREE.InstancedBufferAttribute(scales,2));geo.setAttribute('variant',new THREE.InstancedBufferAttribute(variants,1));
     const mat=new THREE.ShaderMaterial({side:THREE.DoubleSide,uniforms:{map:{value:map},time:{value:0},tree:{value:isTree?1:0}},vertexShader:`attribute vec3 offset;attribute vec2 scale;attribute float variant;uniform float time;uniform float tree;varying vec2 vUv;varying float depth;varying float shade;void main(){vUv=uv;if(variant>.5)vUv.x=1.-vUv.x;vec3 right=normalize(vec3(viewMatrix[0][0],0.,viewMatrix[2][0]));vec3 p=offset+right*position.x*scale.x+vec3(0.,position.y*scale.y,0.);p.x+=sin(time*.8+offset.z*.6)*pow(position.y,2.)*mix(.065,.018,tree);vec4 mv=viewMatrix*vec4(p,1.);depth=-mv.z;shade=.84+variant*.18;gl_Position=projectionMatrix*mv;if(depth>125.&&tree<.5)gl_Position=vec4(2.,2.,2.,1.);}`,fragmentShader:`uniform sampler2D map;uniform float tree;varying vec2 vUv;varying float depth;varying float shade;void main(){vec4 tex=texture2D(map,vUv);if(tex.a<mix(.55,.72,tree))discard;vec3 col=tex.rgb*shade*mix(vec3(.72,.60,.40),vec3(.70,.80,.72),tree);col*=mix(.52,1.,smoothstep(0.,.48,vUv.y));float fog=1.-exp(-pow(depth*.0045,2.));gl_FragColor=vec4(mix(col,vec3(.445,.413,.31),fog),1.);
@@ -127,10 +179,10 @@ export function createSavanna(canvas, state, { mobile, calm, onReady }) {
     }
     const mesh=add(new THREE.Mesh(geo,mat));mesh.frustumCulled=false;return mat;
   }
-  const treeCards=vegetation('/textures/acacia.webp',mobile?55:100,true,mobile?18:34);
-  const grassCards=vegetation('/textures/grass.webp',mobile?4200:12000,false,mobile?1400:4000);
+  const treeCards=vegetation('/textures/acacia.webp',mobile?62:113,true,mobile?22:40);
+  const grassCards=vegetation('/textures/grass.webp',mobile?4750:13500,false,mobile?1600:4800);
   const rocks=add(new THREE.InstancedMesh(new THREE.DodecahedronGeometry(1,1),new THREE.MeshStandardMaterial({color:'#918268',map:soil,roughness:1}),mobile?65:160));
-  for(let i=0;i<rocks.count;i++){const z=40-rand()*300,x0=roadX(z)+(rand()>.5?1:-1)*(3.25+rand()*9),cx=clearX(x0,z,3.25),x=cx??x0;dummy.position.set(x,cx===null?HIDDEN:terrainHeight(x,z),z);dummy.rotation.set(rand(),rand()*6.28,rand());const s=.07+Math.pow(rand(),3)*.45;dummy.scale.set(s*1.6,s*.5,s);dummy.updateMatrix();rocks.setMatrixAt(i,dummy.matrix)}rocks.computeBoundingSphere();
+  for(let i=0;i<rocks.count;i++){const z=mainZ(40,END_Z-90),x=roadX(z)+(rand()>.5?1:-1)*(3.25+rand()*9),ok=roadDistance(x,z)>=3.25;dummy.position.set(x,ok?terrainHeight(x,z):HIDDEN,z);dummy.rotation.set(rand(),rand()*6.28,rand());const s=.07+Math.pow(rand(),3)*.45;dummy.scale.set(s*1.6,s*.5,s);dummy.updateMatrix();rocks.setMatrixAt(i,dummy.matrix)}rocks.computeBoundingSphere();
 
   // The supplied emblem is a true bevelled, three-material GLB, not a camera-facing image.
   const monument=add(new THREE.Group());let logo=null;
@@ -151,67 +203,97 @@ export function createSavanna(canvas, state, { mobile, calm, onReady }) {
   }
   placeMonument();
 
-  // ── Crossroads signpost, standing in the wedge between the two tracks. ──
+  // ── Boards and signposts: frames, rims and wooden legs are merged into three draw calls. ──
   const woodMat=new THREE.MeshStandardMaterial({color:'#4a3420',roughness:.9});
   const frameMat=new THREE.MeshStandardMaterial({color:'#17311f',roughness:.7,metalness:.1});
   const goldMat=new THREE.MeshStandardMaterial({color:'#d4a94c',metalness:.75,roughness:.32});
-  const signs=[];
-  function signTexture(text,pointLeft){
-    const c=document.createElement('canvas');c.width=640;c.height=150;const g=c.getContext('2d');
-    const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=4;
-    const draw=()=>{g.clearRect(0,0,640,150);g.beginPath();
-      if(pointLeft){g.moveTo(8,75);g.lineTo(80,8);g.lineTo(632,8);g.lineTo(632,142);g.lineTo(80,142);}
-      else{g.moveTo(632,75);g.lineTo(560,8);g.lineTo(8,8);g.lineTo(8,142);g.lineTo(560,142);}
-      g.closePath();g.fillStyle='#173b29';g.fill();g.lineWidth=7;g.strokeStyle='#d9ae4f';g.stroke();
-      g.fillStyle='#f6ead0';g.font='700 66px Barlow, "Arial Narrow", sans-serif';g.textAlign='center';g.textBaseline='middle';
-      g.fillText(text,pointLeft?350:290,80);t.needsUpdate=true;needsRender=true;};
-    draw();document.fonts?.ready.then(()=>{if(!stopped)draw()});assetTextures.push(t);return t;
+  const frameParts=[],rimParts=[],woodParts=[],up=new THREE.Vector3(0,1,0),one=new THREE.Vector3(1,1,1);
+  // Photos and sign plates are skipped beyond this distance, where the haze makes them specks.
+  const farProps=[],FAR_PROPS=140*140;
+  const placed=(geo,base,x,y,z)=>geo.translate(x,y,z).applyMatrix4(base);
+  const baseMatrix=(x,y,z,faceX,faceZ)=>new THREE.Matrix4().compose(new THREE.Vector3(x,y,z),new THREE.Quaternion().setFromAxisAngle(up,Math.atan2(faceX-x,faceZ-z)),one);
+  const photoLoader=new THREE.TextureLoader();
+  function photoTexture(src){const map=photoLoader.load(src,()=>{needsRender=true;if(!stopped)renderer.initTexture(map)});map.colorSpace=THREE.SRGBColorSpace;map.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());assetTextures.push(map);return map;}
+  function canvasTexture(width,height,draw){
+    const c=document.createElement('canvas');c.width=width;c.height=height;const g=c.getContext('2d');
+    const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());assetTextures.push(t);
+    const paint=()=>{if(stopped)return;g.clearRect(0,0,width,height);draw(g);t.needsUpdate=true;needsRender=true;};
+    paint();document.fonts?.ready.then(paint);return {texture:t,paint};
   }
-  {
-    const s=26,z=branchZ(s),x=(roadX(z)+branchX(z))/2,y=terrainHeight(x,z),cam=new THREE.Vector3(roadX(FORK_Z),0,FORK_Z);
-    const post=add(new THREE.Group());post.position.set(x,y,z);post.rotation.y=Math.atan2(cam.x-x,cam.z-z);
-    const pole=new THREE.Mesh(new THREE.CylinderGeometry(.07,.09,3.1,10),woodMat);pole.position.y=1.55;post.add(pole);
-    [['LE BUREAU',true,2.55,-.55],['LA ROUTE',false,1.95,.55]].forEach(([label,left,h,dx])=>{
-      const m=new THREE.Mesh(new THREE.PlaneGeometry(1.75,.41),new THREE.MeshStandardMaterial({map:signTexture(label,left),transparent:true,alphaTest:.5,side:THREE.DoubleSide,roughness:.8}));
-      m.position.set(dx,h,.1);post.add(m);signs.push(m);
+  // The inscription road ends at a sign rather than a photo: logo and title on the board.
+  function inscriptionSign(){
+    const logoImage=new Image();
+    const sign=canvasTexture(1024,576,g=>{
+      g.fillStyle='#173b29';g.fillRect(0,0,1024,576);g.strokeStyle='#d9ae4f';g.lineWidth=10;g.strokeRect(26,26,972,524);
+      if(logoImage.complete&&logoImage.naturalWidth){const h=400,w=h*logoImage.naturalWidth/logoImage.naturalHeight;g.drawImage(logoImage,70,88,w,h);}
+      g.textAlign='left';g.textBaseline='alphabetic';g.fillStyle='#f6ead0';g.font='700 92px Barlow, "Arial Narrow", sans-serif';
+      g.fillText('INSCRIPTION',420,236);g.font='700 64px Barlow, "Arial Narrow", sans-serif';g.fillText('& RECENSEMENT',420,318);
+      g.fillStyle='#e8bd6f';g.font='italic 500 76px Cormorant, Georgia, serif';g.fillText('2026–2027',420,418);
     });
+    logoImage.onload=sign.paint;logoImage.src=LOGO;return sign.texture;
   }
+  for(const b of boards){
+    const height=b.width*607/1080,cy=b.post+height/2,y=terrainHeight(b.x,b.z),base=baseMatrix(b.x,y,b.z,b.faceX,b.faceZ);
+    frameParts.push(placed(new THREE.BoxGeometry(b.width+.34,height+.34,.12),base,0,cy,0));
+    // The gold rim shows only around the front of the photo; from behind the board is plain green.
+    rimParts.push(placed(new THREE.BoxGeometry(b.width+.12,height+.12,.1),base,0,cy,.02));
+    for(const sx of [-1,1])woodParts.push(placed(new THREE.CylinderGeometry(.06,.075,b.post+.25,8),base,sx*b.width*.36,(b.post+.25)/2-.12,-.02));
+    const photo=add(new THREE.Mesh(new THREE.PlaneGeometry(b.width,height),new THREE.MeshBasicMaterial({map:b.src?photoTexture(b.src):inscriptionSign(),toneMapped:false,color:'#eeeeee'})));
+    photo.applyMatrix4(base);photo.position.add(new THREE.Vector3(0,cy,.08).applyQuaternion(photo.quaternion));farProps.push(photo);
+    b.center=new THREE.Vector3(b.x,y+cy,b.z);
+  }
+  // Two arrows per signpost, painted on one canvas so each post is a single textured plane.
+  const signLabels={bureau:['LE BUREAU','LA ROUTE'],inscription:['LA ROUTE','INSCRIPTION']};
+  function arrowSign(g,ox,oy,text,pointLeft){
+    g.save();g.translate(ox,oy);g.beginPath();
+    if(pointLeft){g.moveTo(8,75);g.lineTo(80,8);g.lineTo(632,8);g.lineTo(632,142);g.lineTo(80,142);}
+    else{g.moveTo(632,75);g.lineTo(560,8);g.lineTo(8,8);g.lineTo(8,142);g.lineTo(560,142);}
+    g.closePath();g.fillStyle='#173b29';g.fill();g.lineWidth=7;g.strokeStyle='#d9ae4f';g.stroke();
+    g.fillStyle='#f6ead0';g.font='700 66px Barlow, "Arial Narrow", sans-serif';g.textAlign='center';g.textBaseline='middle';
+    g.fillText(text,pointLeft?350:290,80);g.restore();
+  }
+  for(const p of posts){
+    const y=terrainHeight(p.x,p.z),base=baseMatrix(p.x,y,p.z,p.faceX,p.faceZ);
+    woodParts.push(placed(new THREE.CylinderGeometry(.07,.09,3.1,10),base,0,1.55,0));
+    const [top,bottom]=signLabels[p.name];
+    const {texture:map}=canvasTexture(1044,370,g=>{arrowSign(g,0,0,top,true);arrowSign(g,402,219,bottom,false);});
+    const plate=add(new THREE.Mesh(new THREE.PlaneGeometry(2.85,1.01),new THREE.MeshStandardMaterial({map,transparent:true,alphaTest:.5,side:THREE.DoubleSide,roughness:.8})));
+    plate.applyMatrix4(base);plate.position.add(new THREE.Vector3(0,2.25,.1).applyQuaternion(plate.quaternion));farProps.push(plate);
+  }
+  for(const [parts,mat] of [[frameParts,frameMat],[rimParts,goldMat],[woodParts,woodMat]]){add(new THREE.Mesh(mergeGeometries(parts),mat));parts.forEach(g=>g.dispose());}
 
-  // ── Executive-board photographs standing along the left-hand track. ──
-  const photoGroups=[], photoCenters=[], photoLoader=new THREE.TextureLoader();
-  function photoBoard(src,width,postHeight){
-    const group=new THREE.Group(),height=width*607/1080;
-    const map=photoLoader.load(src,()=>{needsRender=true});map.colorSpace=THREE.SRGBColorSpace;map.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());assetTextures.push(map);
-    const cy=postHeight+height/2;
-    const back=new THREE.Mesh(new THREE.BoxGeometry(width+.34,height+.34,.12),frameMat);back.position.y=cy;group.add(back);
-    const rimBox=new THREE.Mesh(new THREE.BoxGeometry(width+.12,height+.12,.13),goldMat);rimBox.position.y=cy;group.add(rimBox);
-    const photo=new THREE.Mesh(new THREE.PlaneGeometry(width,height),new THREE.MeshBasicMaterial({map,toneMapped:false,color:'#eeeeee'}));photo.position.set(0,cy,.075);group.add(photo);
-    for(const sx of [-1,1]){const leg=new THREE.Mesh(new THREE.CylinderGeometry(.06,.075,postHeight+.25,8),woodMat);leg.position.set(sx*width*.36,(postHeight+.25)/2-.12,-.02);group.add(leg)}
-    group.userData.center=cy;return group;
+  // ── Camera stops along each side road: one per scroll screen of its HTML layer. ──
+  // Each stop frames its board at a chosen screen position (beside its caption card on
+  // a wide screen, centred above it on a phone held upright).
+  const sides={};
+  function computeStops(){
+    const portrait=mobile&&innerWidth<innerHeight, near=portrait?10.5:7.5, f=portrait?0:.32, fy=portrait?.2:.05;
+    for(const [name,path] of paths){
+      const stops=[{s:0}];
+      for(const b of boards.filter(b=>b.name===name&&!b.finale))stops.push({s:Math.max(.5,b.s-near+(b.side>0?-.5:.5)),target:b.center,f:b.side>0?-f:f,fy});
+      const fin=boards.find(b=>b.name===name&&b.finale),sF=path.finale.s-(name==='bureau'?(portrait?17.5:12):(portrait?16:11.5));
+      // The final caption card is taller, so the last board sits higher on screen.
+      stops.push({s:sF,target:fin.center,f:0,fy:portrait?.44:.2});
+      for(let k=1;k<=EXIT_SCREENS;k++)stops.push({s:sF+(path.L-sF)*k/EXIT_SCREENS});
+      sides[name]={path,stops};
+    }
   }
-  const lateral=mobile?3.9:4.6;
-  for(let i=0;i<BRANCH_SIDE_PHOTOS;i++){
-    const s=BRANCH_FIRST_PHOTO+i*BRANCH_SPACING,side=i%2?1:-1,z=branchZ(s),x=branchX(z)+side*lateral,y=terrainHeight(x,z);
-    const g=add(photoBoard(BRANCH_IMAGES[i],4.4,1.15));g.position.set(x,y,z);
-    // Face the spot where the camera pauses to look at this board.
-    const vz=branchZ(s-7),vx=branchX(vz);g.rotation.y=Math.atan2(vx-x,vz-z);
-    photoGroups.push(g);photoCenters.push({s,point:new THREE.Vector3(x,y+g.userData.center,z)});
+  computeStops();
+  const tanHalfV=Math.tan(THREE.MathUtils.degToRad(camera.fov/2));
+  // A look-at point that puts `target` at screen position (f, fy) seen from `eye`.
+  function aim(out,eye,target,f,fy){
+    const vx=target.x-eye.x,vz=target.z-eye.z,dist=Math.hypot(vx,vz),a=Math.atan(f*tanHalfV*camera.aspect),c=Math.cos(a),s=Math.sin(a);
+    return out.set(eye.x+vx*c+vz*s,target.y-dist*fy*tanHalfV,eye.z-vx*s+vz*c);
   }
-  const finaleZ=branchZ(BRANCH_FINALE),finaleX=branchX(finaleZ),finaleY=roadHeight(finaleZ);
-  const finale=add(photoBoard(BRANCH_IMAGES[7],7.2,2.3));finale.position.set(finaleX,finaleY,finaleZ);
-  {const vz=branchZ(BRANCH_FINALE-12),vx=branchX(vz);finale.rotation.y=Math.atan2(vx-finaleX,vz-finaleZ);}
-  const finaleCenter=new THREE.Vector3(finaleX,finaleY+finale.userData.center,finaleZ);
-  const finaleStop=BRANCH_FINALE-(mobile?(innerWidth<innerHeight?17:11):9);
 
   const dustCount=mobile?100:320, positions=new Float32Array(dustCount*3),seeds=new Float32Array(dustCount);
-  for(let i=0;i<dustCount;i++){const z=40-rand()*290;positions.set([roadX(z)+(rand()-.5)*22,1+rand()*7,z],i*3);seeds[i]=rand()}
+  for(let i=0;i<dustCount;i++){const z=mainZ(40,END_Z-80);positions.set([roadX(z)+(rand()-.5)*22,1+rand()*7,z],i*3);seeds[i]=rand()}
   const dustGeo=new THREE.BufferGeometry();dustGeo.setAttribute('position',new THREE.BufferAttribute(positions,3));dustGeo.setAttribute('seed',new THREE.BufferAttribute(seeds,1));
   const dustMat=new THREE.ShaderMaterial({transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,uniforms:{time:{value:0},dpr:{value:quality}},vertexShader:`attribute float seed;uniform float time;uniform float dpr;varying float alpha;void main(){vec3 p=position;p.x+=sin(time*.23+seed*60.)*.4;p.y+=sin(time*.32+seed*90.)*.3;vec4 mv=modelViewMatrix*vec4(p,1.);gl_Position=projectionMatrix*mv;gl_PointSize=clamp(38./-mv.z,1.,3.)*dpr;alpha=(.3+seed*.6)*(1.-smoothstep(10.,65.,-mv.z));}`,fragmentShader:`varying float alpha;void main(){float d=length(gl_PointCoord-.5);gl_FragColor=vec4(1.,.76,.40,(1.-smoothstep(.1,.5,d))*alpha*.5);}`});add(new THREE.Points(dustGeo,dustMat));
 
-  const pointer=new THREE.Vector2(), look=new THREE.Vector3(), branchPos=new THREE.Vector3(), branchLook=new THREE.Vector3();
+  const pointer=new THREE.Vector2(), look=new THREE.Vector3(), sidePos=new THREE.Vector3(), sideLook=new THREE.Vector3(), aimPoint=new THREE.Vector3(), aimDelta=new THREE.Vector3(), here={}, ahead={};
   let lastTime=0,previousProgress=-1,elapsed=0,frames=0,slow=0;
-  const frameSamples=[],diagnostic={frames:0,drawCalls:0,triangles:0,pixelRatio:quality,mobile,calm,frameSamples};window.__UOSSA_PERF__=diagnostic;
-  const resize=()=>{needsRender=true;camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);placeMonument()};window.addEventListener('resize',resize);
+  const frameSamples=[],diagnostic={frames:0,drawCalls:0,triangles:0,pixelRatio:quality,mobile,calm,frameSamples,camera:camera.position};window.__UOSSA_PERF__=diagnostic;  const resize=()=>{needsRender=true;camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);placeMonument();computeStops()};window.addEventListener('resize',resize);
   const onLost=e=>{e.preventDefault();canvas.style.opacity='0';document.documentElement.classList.add('no-webgl')};canvas.addEventListener('webglcontextlost',onLost);
   return {
     render(time){
@@ -224,31 +306,38 @@ export function createSavanna(canvas, state, { mobile, calm, onReady }) {
       pointer.lerp(state.pointer,.04);
       const cameraHeight=mobile?2.2:2.35;
       camera.position.set(roadX(z)+(calm||mobile?0:pointer.x*.11),roadHeight(z)+cameraHeight,z);
-      const ahead=z-16;look.set(roadX(ahead),roadHeight(ahead)+1.58,ahead);
-      const br=state.branch;
-      if(br&&br.blend>0&&!calm){
-        // Ease the camera along the left-hand track; scroll sets the target distance.
-        if(br.snap){br.s=br.target;br.snap=false}
-        br.s+=(br.target-br.s)*(1-Math.exp(-Math.min(dt,.1)*4.5));
-        if(Math.abs(br.target-br.s)>.002)needsRender=true;
-        const s=Math.min(Math.max(br.s,0),finaleStop),zb=branchZ(s),za=branchZ(s+16);
-        branchPos.set(branchX(zb)+(mobile?0:pointer.x*.11),roadHeight(zb)+cameraHeight,zb);
-        branchLook.set(branchX(za),roadHeight(za)+1.58,za);
-        let w=0,target=null;
-        for(const ph of photoCenters){const k=Math.exp(-(((s-(ph.s-7))/6.5)**2));if(k>w){w=k;target=ph.point}}
-        if(target)branchLook.lerp(target,w*(mobile&&camera.aspect<1?.9:.55));
-        const f=Math.min(1,Math.max(0,(s-(finaleStop-26))/26));branchLook.lerp(finaleCenter,f*f*(3-2*f)*.85);
-        const e=br.blend*br.blend*(3-2*br.blend);
-        camera.position.lerp(branchPos,e);look.lerp(branchLook,e);
-        state.branchCamera=s;
+      const aheadZ=z-16;look.set(roadX(aheadZ),roadHeight(aheadZ)+1.58,aheadZ);
+      const sd=state.side;
+      if(sd&&sd.route&&sd.blend>0&&!calm&&sides[sd.route]){
+        // Scroll sets the target stop; the camera eases towards it along the side road.
+        const {path,stops}=sides[sd.route],uMax=stops.length-1;
+        sd.uMax=uMax;
+        if(sd.snap){sd.u=sd.target;sd.snap=false}
+        sd.u+=(sd.target-sd.u)*(1-Math.exp(-Math.min(dt,.1)*4.5));
+        const u=Math.min(Math.max(sd.u,0),uMax),i0=Math.min(Math.floor(u),uMax-1),fr=u-i0,s=stops[i0].s+(stops[i0+1].s-stops[i0].s)*fr;
+        const a=path.at(s,here),b=path.at(s+16,ahead);
+        sidePos.set(a.x+(mobile?0:pointer.x*.11),roadHeight(a.z)+cameraHeight,a.z);
+        sideLook.set(b.x,roadHeight(b.z)+1.58,b.z);
+        aimDelta.set(0,0,0);let wSum=0;
+        for(let i=0;i<stops.length;i++){
+          const stop=stops[i];if(!stop.target)continue;
+          const x=(u-i)/.75;if(x<=-1||x>=1)continue;
+          const w=(1-x*x)**2;aimDelta.addScaledVector(aim(aimPoint,sidePos,stop.target,stop.f,stop.fy).sub(sideLook),w);wSum+=w;
+        }
+        if(wSum>1)aimDelta.multiplyScalar(1/wSum);
+        sideLook.add(aimDelta);
+        const e=sd.blend*sd.blend*(3-2*sd.blend);
+        camera.position.lerp(sidePos,e);look.lerp(sideLook,e);
+        sd.s=s;sd.arrived=sd.target>=uMax-.015&&u>=uMax-.015;
       }
       camera.lookAt(look);
+      for(const o of farProps)o.visible=o.position.distanceToSquared(camera.position)<FAR_PROPS;
       // The view steers into bends; no arbitrary orbiting or vertical roller-coaster motion.
       sky.position.copy(camera.position);
       skyMat.uniforms.time.value=t;skyMat.uniforms.pointer.value.copy(pointer);grassMat.uniforms.time.value=t;grassMat.uniforms.pointer.value.copy(pointer);dustMat.uniforms.time.value=t;treeCards.uniforms.time.value=t;grassCards.uniforms.time.value=t;
       if(logo){monument.rotation.y=-.20+(calm?0:pointer.x*.14+Math.sin(t*.28)*.045);monument.rotation.x=calm?0:Math.sin(t*.19)*.018}
       renderer.render(scene,camera);diagnostic.frames++;diagnostic.drawCalls=renderer.info.render.calls;diagnostic.triangles=renderer.info.render.triangles;previousProgress=p;needsRender=false;
-      if(diagnostic.frames%120===0||calm){const sorted=[...frameSamples].sort((a,b)=>a-b);canvas.dataset.performance=JSON.stringify({frames:diagnostic.frames,samples:sorted.length,medianMs:sorted[Math.floor(sorted.length*.5)]||0,p95Ms:sorted[Math.floor(sorted.length*.95)]||0,drawCalls:diagnostic.drawCalls,triangles:diagnostic.triangles,pixelRatio:quality,mobile,calm,camera:[camera.position.x,camera.position.y,camera.position.z],roadCenter:roadX(z),progress:p});}
+      if(diagnostic.frames%120===0||calm){const sorted=[...frameSamples].sort((a,b)=>a-b);canvas.dataset.performance=JSON.stringify({frames:diagnostic.frames,samples:sorted.length,medianMs:sorted[Math.floor(sorted.length*.5)]||0,p95Ms:sorted[Math.floor(sorted.length*.95)]||0,drawCalls:diagnostic.drawCalls,triangles:diagnostic.triangles,pixelRatio:quality,mobile,calm,camera:[camera.position.x,camera.position.y,camera.position.z],roadCenter:roadX(z),progress:p,side:sd?.route?{route:sd.route,s:sd.s,blend:sd.blend}:null});}
     },
     dispose(){stopped=true;window.removeEventListener('resize',resize);canvas.removeEventListener('webglcontextlost',onLost);const geometries=new Set(),materials=new Set();scene.traverse(o=>{if(o.geometry)geometries.add(o.geometry);if(o.material)(Array.isArray(o.material)?o.material:[o.material]).forEach(m=>materials.add(m));o.dispose?.()});geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());assetTextures.forEach(t=>t.dispose());panorama.dispose();environment.dispose();renderer.dispose();delete window.__UOSSA_PERF__;}
   };

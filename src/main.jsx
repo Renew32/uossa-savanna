@@ -5,13 +5,18 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import Lenis from "lenis";
 import "lenis/dist/lenis.css";
 import { createSavanna } from "./scene.js";
-import { FORK_PROGRESS, BRANCH_SPACING } from "./route.js";
+import { START_Z, END_Z, TRAVEL, FORK_Z, JOIN_Z, SIDE_SCREENS, EXIT_SCREENS } from "./route.js";
 import "./style.css";
 
 gsap.registerPlugin(ScrollTrigger);
-const chapters = ["L’esprit", "La téranga", "Le carrefour", "Nos racines", "Ensemble"];
-const chapterIds = ["esprit", "teranga", "carrefour", "racines", "ensemble"];
-const FORK_INDEX = 2;
+const chapters = ["L’esprit", "La téranga", "Le carrefour", "Nos racines", "Votre place", "Ensemble"];
+const chapterIds = ["esprit", "teranga", "carrefour", "racines", "votre-place", "ensemble"];
+// Side roads: the crossroads they leave from and the chapter where they rejoin the main road.
+const SIDES = {
+  bureau: { fork: "carrefour", join: "racines" },
+  inscription: { fork: "votre-place", join: "ensemble" },
+};
+const sideFromHash = () => (location.hash === "#bureau" || location.hash === "#inscription" ? location.hash.slice(1) : null);
 const TEAM_POST = "https://www.instagram.com/p/DdUvimikW-1/?img_index=1";
 const INSTAGRAM = "https://www.instagram.com/uossa.aesuo/";
 const MEMBERSHIP_FORM = "https://docs.google.com/forms/d/e/1FAIpQLSdVQuKM8SwVUPYUUSURm9zUutTQMpb09Y5CgUI9p-yBa1WDDg/viewform?pli=1";
@@ -29,7 +34,7 @@ function Kinetic({ text, italic = false }) {
       <span aria-hidden="true">
         {[...text].map((c, i) => (
           <span className="letter" key={i}>
-            {c === " " ? "\u00a0" : c}
+            {c === " " ? " " : c}
           </span>
         ))}
       </span>
@@ -46,7 +51,7 @@ const boardImages = [
   {src:'/bureau/07.webp',alt:'Portraits et photographies de groupe de l’équipe'},
   {src:'/bureau/08.webp',alt:'Photographie du bureau exécutif réunissant six membres'},
 ];
-// Order along the left-hand track: seven boards beside the road, then the group photo as the finale.
+// Order along the bureau road: seven boards beside the road, then the group photo as the finale.
 const branchOrder = [1, 2, 3, 4, 5, 6, 7, 0];
 function BoardLightbox({selected,setSelected}){
   const viewer=useRef(null);
@@ -59,45 +64,50 @@ function BoardLightbox({selected,setSelected}){
       <p className="gallery-credit">Photographies : @posetapierre.visuel · Publication UOSSA 2026–2027</p>
     </dialog>;
 }
+// A transparent scroll layer over the live 3D scene: each full-height stop is one camera stop
+// along the side road, and the last screens drive back onto the main road.
+function SideLayer({ id, open, layerRef, onScroll, onBack, label, destination, children }) {
+  return (
+    <div ref={layerRef} className={`branch-layer ${open ? "open" : ""}`} data-side={id} inert={!open} aria-hidden={!open} role="region" aria-labelledby={`${id}-road-title`} data-lenis-prevent onScroll={onScroll}>
+      <div className="branch-topbar">
+        <button className="route-back" onClick={onBack}>← Retour au carrefour</button>
+        <span>{label}</span>
+      </div>
+      {children}
+      {Array.from({ length: EXIT_SCREENS }, (_, i) => (
+        <section key={i} className="branch-stop branch-exit" aria-hidden="true">
+          {i === 0 && <span className="exit-hint"><span className="circle-arrow">↓</span><span><small>CONTINUER LA ROUTE</small>{destination}</span></span>}
+        </section>
+      ))}
+    </div>
+  );
+}
 function App() {
-  const canvas = useRef(null),
-    api = useRef(null),
-    navigate = useRef(null);
-  const routeDialog = useRef(null), smoothScroll = useRef(null), returnHash = useRef('#esprit');
-  const stateRef = useRef(null), branchLayer = useRef(null), branchOpen = useRef(false), calmRef = useRef(false);
+  const canvas = useRef(null), navigate = useRef(null), smoothScroll = useRef(null), scrollApi = useRef(null);
+  const stateRef = useRef(null), calmRef = useRef(false), sideOpen = useRef(null), exiting = useRef(false), firstRun = useRef(true), exitForward = useRef(null);
+  const bureauLayer = useRef(null), inscriptionLayer = useRef(null);
+  const layers = { bureau: bureauLayer, inscription: inscriptionLayer };
   const [photo, setPhoto] = useState(null);
-  const [route, setRoute] = useState(() => ['#bureau','#inscription'].includes(location.hash) ? location.hash.slice(1) : null);
+  const [route, setRoute] = useState(sideFromHash);
+  const [layer, setLayer] = useState(null);
   const routeRef = useRef(route); routeRef.current = route;
   const openRoute = (event, name) => {
-    event.preventDefault();
-    if (name === 'bureau') returnHash.current = '#carrefour';
-    else if (!route) returnHash.current = location.hash || '#esprit';
+    event?.preventDefault();
+    if (routeRef.current === name) return;
     history.pushState({secondaryRoute:true}, '', '#' + name);
     setRoute(name);
   };
   const closeRoute = () => {
-    history.replaceState(null, '', returnHash.current);
+    const current = routeRef.current;
+    if (!current) return;
+    history.replaceState(null, '', '#' + SIDES[current].fork);
     setRoute(null);
   };
   useEffect(() => {
-    const sync = () => setRoute(['#bureau','#inscription'].includes(location.hash) ? location.hash.slice(1) : null);
+    const sync = () => setRoute(sideFromHash());
     window.addEventListener('popstate',sync); window.addEventListener('hashchange',sync);
     return () => {window.removeEventListener('popstate',sync);window.removeEventListener('hashchange',sync)};
   }, []);
-  useEffect(() => {
-    const dialog = routeDialog.current;
-    if(route === 'inscription'){
-      if(!dialog.open) dialog.showModal();
-      smoothScroll.current?.stop();
-      document.documentElement.classList.add('secondary-route');
-      dialog.scrollTop=0;
-      dialog.querySelector('button')?.focus({preventScroll:true});
-    } else {
-      if(dialog.open) dialog.close();
-      document.documentElement.classList.remove('secondary-route');
-      if(route !== 'bureau') smoothScroll.current?.start();
-    }
-  },[route]);
   const [isMobile, setIsMobile] = useState(
     () => matchMedia("(max-width: 760px)").matches,
   );
@@ -125,7 +135,7 @@ function App() {
     let lenis;
     const mobile = isMobile;
     const state = { progress: 0, pointer: { x: 0, y: 0 }, reduced: calm,
-      branch: { blend: 0, s: 0, target: 0, snap: false } };
+      side: { route: null, blend: 0, u: 0, target: 0, snap: false, arrived: false } };
     stateRef.current = state; calmRef.current = calm;
     const scene = createSavanna(canvas.current, state, {
       mobile,
@@ -134,7 +144,6 @@ function App() {
         if (!disposed) setReady(true);
       },
     });
-    api.current = scene;
     if (!calm && !mobile) {
       lenis = new Lenis({ duration: 1.15, smoothWheel: true });
       lenis.on("scroll", ScrollTrigger.update);
@@ -142,9 +151,52 @@ function App() {
       if(routeRef.current)lenis.stop();
     }
     const sections = [...document.querySelectorAll(".chapter")];
-    // The camera holds at the crossroads while its section is on screen.
-    const fork = document.getElementById("carrefour");
-    const hold = () => [fork.offsetTop - innerHeight * 0.1, fork.offsetTop + innerHeight * 0.45];
+    // Camera position along the main road for each scroll position. It holds still at both
+    // crossroads while their arrows are on screen, and passes each side road's merge point
+    // just before the chapter that follows it.
+    const topOf = (id) => document.getElementById(id).offsetTop;
+    const holdRange = (side) => { const t = topOf(SIDES[side].fork); return [t - innerHeight * 0.1, t + innerHeight * 0.45]; };
+    const forkTop = (side) => topOf(SIDES[side].fork) + innerHeight * 0.15;
+    let anchors = null;
+    const getAnchors = () => {
+      if (anchors) return anchors;
+      const end = Math.max(1, document.documentElement.scrollHeight - innerHeight);
+      const [a1, b1] = holdRange("bureau"), [a2, b2] = holdRange("inscription");
+      // The camera waits a few metres before each fork so the split is in view ahead.
+      const list = [[a1, FORK_Z.bureau + 6], [b1, FORK_Z.bureau + 6], [topOf("racines") + innerHeight * 0.1, JOIN_Z.bureau - 6],
+        [a2, FORK_Z.inscription + 6], [b2, FORK_Z.inscription + 6], [end, END_Z]];
+      anchors = [[0, START_Z]];
+      for (const a of list) if (a[0] > anchors[anchors.length - 1][0] + 1) anchors.push(a);
+      return anchors;
+    };
+    const zForY = (y) => {
+      const A = getAnchors();
+      for (let i = 1; i < A.length; i++) if (y <= A[i][0]) { const [y0, z0] = A[i - 1], [y1, z1] = A[i]; return z0 + (z1 - z0) * Math.max(0, y - y0) / (y1 - y0); }
+      return A[A.length - 1][1];
+    };
+    const yForZ = (z) => {
+      const A = getAnchors();
+      for (let i = 1; i < A.length; i++) { const [y0, z0] = A[i - 1], [y1, z1] = A[i]; if (z0 !== z1 && z <= z0 && z >= z1) return y0 + (y1 - y0) * (z0 - z) / (z0 - z1); }
+      return z > A[0][1] ? 0 : A[A.length - 1][0];
+    };
+    const resetAnchors = () => { anchors = null; };
+    ScrollTrigger.addEventListener("refreshInit", resetAnchors);
+    const jumpScroll = (y) => {
+      if (lenis) lenis.scrollTo(y, { immediate: true, force: true });
+      else window.scrollTo({ top: y, behavior: "instant" });
+      ScrollTrigger.update();
+    };
+    // Drives the camera along the main road to a scroll position (to reach a crossroads).
+    // Gentle start and stop, so the camera never lurches when the drive begins.
+    let drive = null;
+    const easeInOut = (t) => (1 - Math.cos(Math.PI * t)) / 2;
+    const driveScroll = (y, done) => {
+      drive?.kill(); drive = null;
+      const duration = Math.min(4.2, 1.1 + Math.abs(scrollY - y) / 1800);
+      if (lenis) lenis.scrollTo(y, { duration, easing: easeInOut, force: true, lock: true, onComplete: done });
+      else { const o = { y: scrollY }; drive = gsap.to(o, { y, duration, ease: "sine.inOut", onUpdate: () => window.scrollTo(0, o.y), onComplete: done }); }
+    };
+    scrollApi.current = { topOf, holdRange, forkTop, yForZ, jumpScroll, driveScroll };
     let last = -1;
     const context = gsap.context(() => {
       ScrollTrigger.create({
@@ -152,11 +204,7 @@ function App() {
         start: "top top",
         end: "bottom bottom",
         onUpdate: (self) => {
-          const y = self.scroll(), [a, b] = hold();
-          const p = y <= a ? FORK_PROGRESS * (y - self.start) / Math.max(1, a - self.start)
-            : y <= b ? FORK_PROGRESS
-            : FORK_PROGRESS + (1 - FORK_PROGRESS) * (y - b) / Math.max(1, self.end - b);
-          state.progress = Math.min(1, Math.max(0, p));
+          state.progress = Math.min(1, Math.max(0, (START_Z - zForY(self.scroll())) / TRAVEL));
           document.querySelector(".progress-fill").style.transform =
             `scaleY(${self.progress})`;
           const index = sections.reduce(
@@ -231,7 +279,7 @@ function App() {
       const done = () => {
         document.documentElement.dataset.navigation = "idle";
       };
-      if (lenis) lenis.scrollTo(top, { duration: 1.6, onComplete: done });
+      if (lenis) lenis.scrollTo(top, { duration: Math.min(3.2, 1.2 + Math.abs(scrollY - top) / 2200), easing: easeInOut, onComplete: done });
       else {
         window.scrollTo({ top, behavior: "instant" });
         done();
@@ -239,7 +287,10 @@ function App() {
     };
     const tick = (time) => {
       lenis?.raf(time * 1000);
-      if (!document.hidden && routeRef.current !== 'inscription') scene?.render(time);
+      if (!document.hidden) scene?.render(time);
+      // At the end of a side road the camera has merged into the main road: hand over to it.
+      const side = state.side;
+      if (side.arrived && side.route && routeRef.current === side.route && !exiting.current) exitForward.current?.(side.route);
     };
     gsap.ticker.add(tick);
     const refresh = () => ScrollTrigger.refresh();
@@ -247,66 +298,111 @@ function App() {
     return () => {
       disposed = true;
       gsap.ticker.remove(tick);
+      ScrollTrigger.removeEventListener("refreshInit", resetAnchors);
+      drive?.kill();
       context.revert();
       lenis?.destroy();
       smoothScroll.current = null;
+      scrollApi.current = null;
       scene?.dispose();
       window.removeEventListener("pointermove", move);
     };
   }, [calm, isMobile]);
-  // ── The left-hand track: the camera turns off at the crossroads and scroll drives it. ──
+  // ── Side roads: drive to the crossroads, turn off, and come back (or carry on to the main road). ──
   useEffect(() => {
-    const st = stateRef.current, layer = branchLayer.current, html = document.documentElement;
-    if (!st || !layer) return;
-    const calmNow = calmRef.current;
-    const forkTop = () => document.getElementById("carrefour").offsetTop + innerHeight * 0.15;
-    if (route === 'bureau') {
-      const reenter = branchOpen.current;
-      branchOpen.current = true;
-      const go = () => {
-        if (routeRef.current !== 'bureau') return;
-        html.classList.add('branch-mode');
-        smoothScroll.current?.stop();
-        gsap.killTweensOf(st.branch);
-        if (!reenter) layer.scrollTop = 0;
-        st.branch.target = layer.scrollTop / Math.max(1, layer.clientHeight) * BRANCH_SPACING;
-        st.branch.snap = true;
-        if (calmNow || reenter) st.branch.blend = 1;
-        else gsap.to(st.branch, { blend: 1, duration: 1.6, ease: "power2.inOut" });
-        layer.querySelector('.route-back')?.focus({ preventScroll: true });
+    const st = stateRef.current, api = scrollApi.current, html = document.documentElement;
+    const first = firstRun.current; firstRun.current = false;
+    if (!st || !api) return;
+    const calmNow = calmRef.current, lenis = smoothScroll.current;
+    if (route) {
+      const previous = sideOpen.current, reenter = previous === route, layerEl = layers[route].current;
+      sideOpen.current = route;
+      html.classList.add('branch-mode');
+      lenis?.stop();
+      const go = (immediate) => {
+        if (routeRef.current !== route) return;
+        gsap.killTweensOf(st.side);
+        if (!reenter) layerEl.scrollTop = 0;
+        const target = layerEl.scrollTop / Math.max(1, layerEl.scrollHeight - layerEl.clientHeight) * (SIDE_SCREENS[route] - 1);
+        Object.assign(st.side, { route, target, snap: true, arrived: false });
+        if (immediate || calmNow) st.side.blend = 1;
+        else { st.side.blend = 0; gsap.to(st.side, { blend: 1, duration: 1.6, ease: "power2.inOut" }); }
+        setLayer(route);
       };
-      const top = forkTop(), lenis = smoothScroll.current;
-      if (reenter || calmNow || Math.abs(scrollY - top) < 6 || !lenis) {
-        if (lenis) lenis.scrollTo(top, { immediate: true, force: true });
-        else window.scrollTo({ top, behavior: "instant" });
-        ScrollTrigger.update();
-        requestAnimationFrame(go);
-      } else {
-        // Drive to the crossroads first, then turn left.
-        lenis.scrollTo(top, { duration: 1.5, force: true, onComplete: go });
-      }
-    } else if (branchOpen.current) {
-      branchOpen.current = false;
+      const toFork = () => {
+        const [a, b] = api.holdRange(route), atFork = scrollY >= a - 2 && scrollY <= b + 2;
+        if (first || reenter || calmNow) {
+          if (!atFork) api.jumpScroll(api.forkTop(route));
+          requestAnimationFrame(() => go(true));
+        } else if (atFork) go(false);
+        else api.driveScroll(api.forkTop(route), () => go(false));
+      };
+      if (previous && !reenter && st.side.route === previous && st.side.blend > 0 && !calmNow) {
+        // Straight from the other side road: finish it onto the main road, then drive on.
+        setLayer(null);
+        gsap.killTweensOf(st.side);
+        const end = SIDE_SCREENS[previous] - 1;
+        gsap.to(st.side, { u: end, target: end, duration: Math.min(2.4, 0.8 + (end - st.side.u) * 0.3), ease: "power1.inOut", onComplete: () => {
+          if (routeRef.current !== route) return;
+          api.jumpScroll(api.yForZ(JOIN_Z[previous]));
+          Object.assign(st.side, { blend: 0, route: null, u: 0, target: 0, arrived: false });
+          toFork();
+        } });
+      } else toFork();
+    } else if (sideOpen.current) {
+      const from = sideOpen.current;
+      sideOpen.current = null;
       html.classList.remove('branch-mode');
-      smoothScroll.current?.start();
-      gsap.killTweensOf(st.branch);
-      const finish = () => { st.branch.blend = 0; st.branch.s = st.branch.target = 0; };
-      if (calmNow || st.branch.blend === 0) finish();
-      else gsap.timeline({ onComplete: finish })
-        .to(st.branch, { target: 0, s: 0, duration: Math.min(2.4, 0.5 + st.branch.s / 55), ease: "power2.inOut" })
-        .to(st.branch, { blend: 0, duration: 1.1, ease: "power2.inOut" });
-      document.querySelector('.fork-arrow.left')?.focus({ preventScroll: true });
+      setLayer(null);
+      gsap.killTweensOf(st.side);
+      const reset = () => Object.assign(st.side, { blend: 0, route: null, u: 0, target: 0, arrived: false });
+      if (exiting.current) {
+        // Forward exit: the main camera already stands where the side road merged.
+        exiting.current = false;
+        lenis?.start();
+        if (calmNow || st.side.blend === 0) reset();
+        else gsap.to(st.side, { blend: 0, duration: 0.5, ease: "power1.out", onComplete: reset });
+        return;
+      }
+      // Back to the crossroads: reverse along the side road, then turn back onto the main road.
+      const [a, b] = api.holdRange(from);
+      if (scrollY < a || scrollY > b) api.jumpScroll(api.forkTop(from));
+      lenis?.start();
+      if (calmNow || st.side.blend === 0 || st.side.route !== from) reset();
+      else gsap.timeline({ onComplete: reset })
+        .to(st.side, { target: 0, u: 0, duration: Math.min(2.6, 0.6 + st.side.u * 0.3), ease: "power2.inOut" })
+        .to(st.side, { blend: 0, duration: 1.1, ease: "power2.inOut" });
+      document.querySelector(`.fork-arrow[data-side="${from}"]`)?.focus({ preventScroll: true });
     }
   }, [route, calm, isMobile]);
   useEffect(() => {
-    if (route !== 'bureau') return;
+    if (layer) layers[layer].current?.querySelector('.route-back')?.focus({ preventScroll: true });
+  }, [layer]);
+  useEffect(() => {
+    if (!route) return;
     const key = (e) => { if (e.key === 'Escape' && !document.querySelector('.board-lightbox[open]')) closeRoute(); };
     window.addEventListener('keydown', key);
     return () => window.removeEventListener('keydown', key);
   }, [route]);
-  const onBranchScroll = (e) => {
+  exitForward.current = (side) => {
+    const api = scrollApi.current;
+    if (!api || exiting.current || routeRef.current !== side) return;
+    exiting.current = true;
+    const flat = calmRef.current || document.documentElement.classList.contains('no-webgl');
+    api.jumpScroll(flat ? api.topOf(SIDES[side].join) : api.yForZ(JOIN_Z[side]));
+    history.replaceState(null, '', '#' + SIDES[side].join);
+    setRoute(null);
+  };
+  // "Continuer la route": drive the rest of the side road (the camera merges, then hands over).
+  const continueRoad = (side) => {
+    const el = layers[side].current;
+    if (calmRef.current || document.documentElement.classList.contains('no-webgl')) exitForward.current(side);
+    else el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+  };
+  const onLayerScroll = (side) => (e) => {
     const st = stateRef.current, el = e.currentTarget;
-    if (st) st.branch.target = el.scrollTop / Math.max(1, el.clientHeight) * BRANCH_SPACING;
+    if (st && st.side.route === side && !exiting.current)
+      st.side.target = el.scrollTop / Math.max(1, el.scrollHeight - el.clientHeight) * (SIDE_SCREENS[side] - 1);
   };
   const jump = (event, index) => {
     event.preventDefault();
@@ -351,7 +447,7 @@ function App() {
           <a href="#teranga" onClick={(e) => jump(e, 1)}>
             Notre esprit
           </a>
-          <a href="#racines" onClick={(e) => jump(e, 2)}>
+          <a href="#racines" onClick={(e) => jump(e, 3)}>
             Nos racines
           </a>
           <a href="#bureau" onClick={(e) => openRoute(e, "bureau")}>Le bureau</a>
@@ -496,7 +592,7 @@ function App() {
               À droite, la route continue vers nos racines.
             </p>
             <div className="fork-arrows" role="group" aria-label="Choisir un chemin">
-              <button className="fork-arrow left" onClick={(e) => openRoute(e, "bureau")}>
+              <button className="fork-arrow left" data-side="bureau" onClick={(e) => openRoute(e, "bureau")}>
                 <span className="fork-circle" aria-hidden="true">←</span>
                 <span><small>À GAUCHE</small>Le bureau exécutif<em>Rencontrer l’équipe 2026–2027</em></span>
               </button>
@@ -545,13 +641,40 @@ function App() {
         </section>
         <section
           tabIndex={-1}
+          className="chapter crossroads"
+          id="votre-place"
+          aria-labelledby="place-title"
+        >
+          <div className="chapter-content">
+            <div className="eyebrow reveal">04 / PRENEZ PART AU VOYAGE</div>
+            <h2 id="place-title">
+              <Kinetic text="VOTRE PLACE" />
+              <Kinetic text="est ici." italic />
+            </h2>
+            <p className="body-copy reveal">
+              Inscription et recensement des membres 2026–2027. Rejoignez l’UOSSA, partagez vos envies et faites-nous connaître vos idées pour l’année.
+            </p>
+            <div className="fork-arrows" role="group" aria-label="Choisir un chemin">
+              <button className="fork-arrow left straight" onClick={(e) => jump(e, 5)}>
+                <span className="fork-circle" aria-hidden="true">↑</span>
+                <span><small>TOUT DROIT</small>Continuer la route<em>Ensemble</em></span>
+              </button>
+              <button className="fork-arrow right" data-side="inscription" onClick={(e) => openRoute(e, "inscription")}>
+                <span><small>À DROITE</small>Inscription & recensement<em>M’inscrire / me recenser</em></span>
+                <span className="fork-circle" aria-hidden="true">→</span>
+              </button>
+            </div>
+          </div>
+        </section>
+        <section
+          tabIndex={-1}
           className="chapter together"
           id="ensemble"
           aria-labelledby="together-title"
         >
           <div className="chapter-content">
             <div className="eyebrow reveal">
-              <Star /> 04 / L’HISTOIRE CONTINUE
+              <Star /> 05 / L’HISTOIRE CONTINUE
             </div>
             <h2 id="together-title">
               <Kinetic text="PLUS QU’UNE ASSO." />
@@ -602,39 +725,12 @@ function App() {
           </footer>
         </section>
       </main>
-      <dialog ref={routeDialog} className="route-dialog" aria-labelledby="inscription-title" onCancel={(e)=>{e.preventDefault();closeRoute()}} data-lenis-prevent>
-        <div className="route-topbar"><button className="route-back" onClick={closeRoute}>← Retour à la savane</button><span>UOSSA · AESUO / DEVENIR MEMBRE</span></div>
-        {route === 'inscription' && (        <section tabIndex={-1} className="branch-page inscription" id="inscription-page" aria-labelledby="inscription-title">
-          <div className="chapter-content">
-            <div className="eyebrow reveal">PARCOURS MEMBRES / PRENEZ PART AU VOYAGE</div>
-            <h2 id="inscription-title"><Kinetic text="VOTRE PLACE" /><Kinetic text="est ici." italic /></h2>
-            <p className="body-copy reveal">Inscription et recensement des membres 2026–2027. Rejoignez l’UOSSA, partagez vos envies et faites-nous connaître vos idées pour l’année.</p>
-            <a className="path-action reveal" href={MEMBERSHIP_FORM} target="_blank" rel="noopener noreferrer">M’inscrire / me recenser <span aria-hidden="true">↗</span><small>OUVRIR LE FORMULAIRE GOOGLE</small></a>
-            <p className="form-note reveal">Le formulaire permet aussi de proposer votre aide comme bénévole.</p>
-            <a className="next-path reveal" href="#ensemble" onClick={(e) => {e.preventDefault();closeRoute()}}>Revenir au voyage dans la savane ←</a>
-          </div>
-        </section>
-)}
-        <a className="route-instagram" href={INSTAGRAM} target="_blank" rel="noopener noreferrer">Instagram @uossa.aesuo ↗</a>
-      </dialog>
-      <div
-        ref={branchLayer}
-        className={`branch-layer ${route === 'bureau' ? 'open' : ''}`}
-        inert={route !== 'bureau'}
-        aria-hidden={route !== 'bureau'}
-        aria-labelledby="branch-title"
-        role="region"
-        data-lenis-prevent
-        onScroll={onBranchScroll}
-      >
-        <div className="branch-topbar">
-          <button className="route-back" onClick={closeRoute}>← Retour au carrefour</button>
-          <span>UOSSA · AESUO / LE BUREAU EXÉCUTIF 2026–2027</span>
-        </div>
+      <SideLayer id="bureau" open={layer === 'bureau'} layerRef={bureauLayer} onScroll={onLayerScroll('bureau')} onBack={closeRoute}
+        label="UOSSA · AESUO / LE BUREAU EXÉCUTIF 2026–2027" destination="Nos racines">
         <section className="branch-stop branch-intro">
           <div className="branch-card intro">
             <div className="eyebrow">À GAUCHE / LE CHEMIN DU BUREAU</div>
-            <h2 id="branch-title"><span className="line">LE BUREAU</span><span className="line serif">À vos côtés.</span></h2>
+            <h2 id="bureau-road-title"><span className="line">LE BUREAU</span><span className="line serif">À vos côtés.</span></h2>
             <p className="body-copy">L’équipe qui fait vivre notre communauté et porte vos idées sur le campus.</p>
             <span className="branch-hint"><span className="circle-arrow" aria-hidden="true">↓</span>SCROLLEZ POUR LONGER LE CHEMIN</span>
           </div>
@@ -660,12 +756,36 @@ function App() {
             <div className="branch-actions">
               <button onClick={() => setPhoto(0)}>Agrandir la photo ↗</button>
               <a href={TEAM_POST} target="_blank" rel="noopener noreferrer">Découvrir les membres sur Instagram ↗</a>
+              <button onClick={() => continueRoad('bureau')}>Continuer la route →</button>
               <a href="#inscription" onClick={(e) => openRoute(e, "inscription")}>Prendre le chemin de l’inscription →</a>
               <button onClick={closeRoute}>← Revenir au carrefour</button>
             </div>
           </div>
         </section>
-      </div>
+      </SideLayer>
+      <SideLayer id="inscription" open={layer === 'inscription'} layerRef={inscriptionLayer} onScroll={onLayerScroll('inscription')} onBack={closeRoute}
+        label="UOSSA · AESUO / DEVENIR MEMBRE" destination="Ensemble">
+        <section className="branch-stop branch-intro">
+          <div className="branch-card intro">
+            <div className="eyebrow">À DROITE / PARCOURS MEMBRES</div>
+            <h2 id="inscription-road-title"><span className="line">INSCRIPTION</span><span className="line serif">& recensement.</span></h2>
+            <p className="body-copy">Le formulaire permet aussi de proposer votre aide comme bénévole.</p>
+            <span className="branch-hint"><span className="circle-arrow" aria-hidden="true">↓</span>SCROLLEZ POUR LONGER LE CHEMIN</span>
+          </div>
+        </section>
+        <section className="branch-stop branch-finale">
+          <div className="branch-card finale long-title">
+            <span className="branch-count">AU BOUT DU CHEMIN</span>
+            <h3>Inscription et recensement des membres 2026–2027.</h3>
+            <a className="path-action" href={MEMBERSHIP_FORM} target="_blank" rel="noopener noreferrer">M’inscrire / me recenser <span aria-hidden="true">↗</span><small>OUVRIR LE FORMULAIRE GOOGLE</small></a>
+            <div className="branch-actions">
+              <a href={INSTAGRAM} target="_blank" rel="noopener noreferrer">Instagram @uossa.aesuo ↗</a>
+              <button onClick={() => continueRoad('inscription')}>Continuer la route →</button>
+              <button onClick={closeRoute}>← Revenir au carrefour</button>
+            </div>
+          </div>
+        </section>
+      </SideLayer>
       <BoardLightbox selected={photo} setSelected={setPhoto} />
       <div className="bottom-ui">
         <span className="chapter-caption">
