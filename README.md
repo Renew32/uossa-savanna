@@ -22,7 +22,9 @@ L’aperçu de production utilise normalement http://127.0.0.1:4173. Le dossier 
 
 ## Contrôles
 
-Défiler pour avancer sur la route ; utiliser les liens pour changer de chapitre. Le curseur influence légèrement la caméra et le vent. Le bouton « Animation réduite » fige la caméra et les effets. La préférence système de réduction des mouvements est également respectée. Navigation clavier et lien d’évitement inclus. Deux parcours secondaires, Bureau et Inscription, s’ouvrent depuis l’accueil et la navigation, séparément des quatre chapitres de la savane. Un retour restaure la position précédente. Les destinations #bureau et #inscription sont accessibles directement ; Instagram reste disponible en bas à droite.
+Défiler pour avancer sur la route ; utiliser les liens pour changer de chapitre. Le curseur influence légèrement la caméra et le vent. Le bouton « Animation réduite » fige la caméra et les effets. La préférence système de réduction des mouvements est également respectée. Navigation clavier et lien d’évitement inclus. Instagram reste disponible en bas à droite.
+
+Deux carrefours jalonnent la route. Au premier (« Le carrefour »), la flèche gauche prend la route du bureau exécutif : sept panneaux photo au bord du chemin, puis la photo de groupe au bout. Au second (« Votre place »), la flèche droite prend la route de l’inscription et du recensement, qui se termine devant le panneau du formulaire. Chaque route annexe se défile comme le parcours principal ; au bout, elle revient rejoindre la route principale (avant « Nos racines » pour le bureau, avant « Ensemble » pour l’inscription). « Retour au carrefour » ou Échap ramène la caméra au carrefour. Les liens #bureau et #inscription, le menu et le bouton « Rejoindre » y conduisent directement.
 
 ## Choix des outils
 
@@ -35,7 +37,7 @@ Défiler pour avancer sur la route ; utiliser les liens pour changer de chapitre
 
 ## Fichiers clés
 
-- `src/route.js` : tracé commun à la route et à la caméra.
+- `src/route.js` : tracé commun aux routes (principale et annexes), à la caméra et au dégagement du terrain.
 - `src/scene.js` : environnement et rendu 3D.
 - `src/main.jsx` : contenu, navigation et animations.
 - `notes/uossa-logo-relief.blend` : logo éditable ; la scène active contient les dernières courbes lissées.
