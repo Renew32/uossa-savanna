@@ -1,7 +1,10 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-import { START_Z, TRAVEL, ROAD_HALF_WIDTH, roadX, roadSlope, roadHeight, terrainHeight } from './route.js';
+import { START_Z, TRAVEL, ROAD_HALF_WIDTH, roadX, roadSlope, roadHeight, terrainHeight, FORK_Z, BRANCH_LENGTH, BRANCH_SPACING, BRANCH_FIRST_PHOTO, BRANCH_SIDE_PHOTOS, BRANCH_FINALE, branchX, branchSlope, branchZ } from './route.js';
+
+// Executive-board photos shown along the left-hand track (same order as the HTML captions).
+export const BRANCH_IMAGES = ['/bureau/02.webp','/bureau/03.webp','/bureau/04.webp','/bureau/05.webp','/bureau/06.webp','/bureau/07.webp','/bureau/08.webp','/bureau-2026-2027.webp'];
 
 export function createSavanna(canvas, state, { mobile, calm, onReady }) {
   let renderer;
@@ -27,6 +30,21 @@ export function createSavanna(canvas, state, { mobile, calm, onReady }) {
   let seed = 8291;
   const rand = () => { seed = seed * 16807 % 2147483647; return (seed - 1) / 2147483646; };
   const dummy = new THREE.Object3D(), color = new THREE.Color();
+  const onBranch = z => z <= FORK_Z && z >= FORK_Z - BRANCH_LENGTH - 10;
+  // Keep scattered props off both tracks: push them clear of the branch, or hide them.
+  const HIDDEN = -200;
+  function clearX(x, z, clear) {
+    if (!onBranch(z)) return x;
+    const bx = branchX(z), db = x - bx;
+    if (Math.abs(db) >= clear) return x;
+    const nx = bx + (db < 0 ? -1 : 1) * (2 * clear - Math.abs(db));
+    return Math.abs(nx - roadX(z)) >= clear ? nx : null;
+  }
+  // A point beside the branch, rejected if it would land on the main road.
+  function branchSpot(dist, clear) {
+    const z = branchZ(rand() * (BRANCH_LENGTH + 12)), x = branchX(z) + (rand() > .5 ? 1 : -1) * dist;
+    return Math.abs(x - roadX(z)) >= clear ? [x, z] : null;
+  }
   const add = o => {scene.add(o);return o;};
 
   // Distant photographic atmosphere only; the road and the near landscape are meshes.
@@ -50,27 +68,35 @@ export function createSavanna(canvas, state, { mobile, calm, onReady }) {
   add(new THREE.Mesh(groundGeometry,terrainMat));
 
   // Broad red-earth track, twin worn ruts and ragged shoulders. The same curve drives the camera.
-  const rows=420, columns=20, roadPositions=[], roadUV=[], roadIndices=[];
-  for(let i=0;i<=rows;i++){
-    const z=65-i/rows*330, center=roadX(z), slope=roadSlope(z), norm=Math.sqrt(1+slope*slope);
-    for(let j=0;j<=columns;j++){
-      const across=j/columns*2-1, offset=across*ROAD_HALF_WIDTH;
-      const x=center+offset/norm, zz=z-offset*slope/norm;
-      roadPositions.push(x,roadHeight(zz)+.008+0.035*(1-across*across),zz);roadUV.push(j/columns,(65-z)/4);
-      if(i<rows&&j<columns){const a=i*(columns+1)+j,b=a+columns+1;roadIndices.push(a,b,a+1,b,b+1,a+1)}
+  function buildRoad(centerAt, slopeAt, zFrom, zTo, rows, lift){
+    const columns=20, roadPositions=[], roadUV=[], roadIndices=[];
+    for(let i=0;i<=rows;i++){
+      const z=zFrom-i/rows*(zFrom-zTo), center=centerAt(z), slope=slopeAt(z), norm=Math.sqrt(1+slope*slope);
+      for(let j=0;j<=columns;j++){
+        const across=j/columns*2-1, offset=across*ROAD_HALF_WIDTH;
+        const x=center+offset/norm, zz=z-offset*slope/norm;
+        roadPositions.push(x,roadHeight(zz)+lift+0.035*(1-across*across),zz);roadUV.push(j/columns,(65-z)/4);
+        if(i<rows&&j<columns){const a=i*(columns+1)+j,b=a+columns+1;roadIndices.push(a,b,a+1,b,b+1,a+1)}
+      }
     }
+    const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(roadPositions,3));geo.setAttribute('uv',new THREE.Float32BufferAttribute(roadUV,2));geo.setIndex(roadIndices);geo.computeVertexNormals();return geo;
   }
-  const roadGeo=new THREE.BufferGeometry();roadGeo.setAttribute('position',new THREE.Float32BufferAttribute(roadPositions,3));roadGeo.setAttribute('uv',new THREE.Float32BufferAttribute(roadUV,2));roadGeo.setIndex(roadIndices);roadGeo.computeVertexNormals();
+  const roadGeo=buildRoad(roadX,roadSlope,65,-265,420,.008);
   const roadMat=new THREE.ShaderMaterial({transparent:true,depthWrite:true,side:THREE.DoubleSide,uniforms:{time:{value:0},soil:{value:soil}},vertexShader:`varying vec2 vUv;varying float depth;void main(){vUv=uv;vec4 mv=modelViewMatrix*vec4(position,1.);depth=-mv.z;gl_Position=projectionMatrix*mv;}`,fragmentShader:`uniform sampler2D soil;varying vec2 vUv;varying float depth;float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}void main(){float grain=hash(floor(vUv*vec2(190.,70.)));float coarse=hash(floor(vUv*vec2(19.,12.)));float rut1=exp(-pow((vUv.x-.29-sin(vUv.y*.51)*.012)/(.04+.012*sin(vUv.y*.73)),2.));float rut2=exp(-pow((vUv.x-.71-sin(vUv.y*.51)*.012)/(.04+.01*cos(vUv.y*.83)),2.));float ridges=sin(vUv.y*105.)*.015;float edge=abs(vUv.x-.5)*2.;float alpha=1.-smoothstep(.78+coarse*.07,1.,edge);vec3 clay=mix(vec3(.42,.255,.12),vec3(.67,.445,.25),grain*.5+coarse*.25);clay-=(rut1+rut2)*vec3(.085,.065,.033);clay=mix(clay,texture2D(soil,vec2(vUv.x*1.3,vUv.y)).rgb*vec3(1.1,.91,.72),.82);clay-=(rut1+rut2)*.065;clay+=ridges*.3;float fog=1.-exp(-pow(depth*.0045,2.));gl_FragColor=vec4(mix(clay,vec3(.445,.413,.31),fog),alpha);\n#include <tonemapping_fragment>\n#include <colorspace_fragment>\n}`});
   const road=add(new THREE.Mesh(roadGeo,roadMat));road.renderOrder=1;
+  // The left-hand track sits a hair below the main road and is drawn first, so the
+  // main road's soft shoulders blend over it where the two surfaces meet at the fork.
+  const branchRoad=add(new THREE.Mesh(buildRoad(branchX,branchSlope,FORK_Z+2,FORK_Z-BRANCH_LENGTH,260,.004),roadMat));branchRoad.renderOrder=.9;
 
   // Grass tufts placed against the road curve, never through its driving corridor.
   const grassGeometry=new THREE.InstancedBufferGeometry();
   grassGeometry.setAttribute('position',new THREE.Float32BufferAttribute([-.025,0,0,.025,0,0,-.018,.5,0,.018,.5,0,0,1,0],3));grassGeometry.setIndex([0,1,2,2,1,3,2,3,4]);
-  const grassCount=mobile?2500:7000, offsets=new Float32Array(grassCount*3),sizes=new Float32Array(grassCount),angles=new Float32Array(grassCount);
+  const mainGrass=mobile?2500:7000, grassCount=mainGrass+(mobile?700:1800), offsets=new Float32Array(grassCount*3),sizes=new Float32Array(grassCount),angles=new Float32Array(grassCount);
   for(let i=0;i<grassCount;i++){
-    const z=52-rand()*302,sign=rand()>.5?1:-1, distance=3.25+Math.pow(rand(),1.7)*69;
-    const x=roadX(z)+sign*distance;offsets.set([x,terrainHeight(x,z),z],i*3);sizes[i]=.10+rand()*.24;angles[i]=rand()*Math.PI*2;
+    let x,z;
+    if(i<mainGrass){z=52-rand()*302;const sign=rand()>.5?1:-1, distance=3.25+Math.pow(rand(),1.7)*69;x=clearX(roadX(z)+sign*distance,z,3.25);}
+    else{const spot=branchSpot(3.25+Math.pow(rand(),1.7)*30,3.25);x=spot?.[0]??null;z=spot?.[1]??0;}
+    offsets.set(x===null?[0,HIDDEN,z]:[x,terrainHeight(x,z),z],i*3);sizes[i]=.10+rand()*.24;angles[i]=rand()*Math.PI*2;
   }
   grassGeometry.setAttribute('offset',new THREE.InstancedBufferAttribute(offsets,3));grassGeometry.setAttribute('size',new THREE.InstancedBufferAttribute(sizes,1));grassGeometry.setAttribute('angle',new THREE.InstancedBufferAttribute(angles,1));
   const grassMat=new THREE.ShaderMaterial({side:THREE.DoubleSide,uniforms:{time:{value:0},pointer:{value:new THREE.Vector2()}},vertexShader:`attribute vec3 offset;attribute float size;attribute float angle;uniform float time;uniform vec2 pointer;varying float h;varying float depth;varying float variation;void main(){vec3 p=position;p.y*=size;float wind=sin(time*1.1+offset.x*.22+offset.z*.15)*.18+pointer.x*.035;p.x+=position.y*position.y*wind;p.xz=mat2(cos(angle),-sin(angle),sin(angle),cos(angle))*p.xz;p+=offset;vec4 mv=modelViewMatrix*vec4(p,1.);h=position.y;variation=fract(offset.x*.74+offset.z*.37);depth=-mv.z;gl_Position=projectionMatrix*mv;}`,fragmentShader:`varying float h;varying float depth;varying float variation;void main(){vec3 col=mix(vec3(.16,.17,.045),vec3(.69,.52,.20),h);col*=.75+variation*.4;float fog=1.-exp(-pow(depth*.0045,2.));gl_FragColor=vec4(mix(col,vec3(.445,.413,.31),fog),1.);}`});
@@ -78,13 +104,17 @@ export function createSavanna(canvas, state, { mobile, calm, onReady }) {
 
   // Photographic alpha-tested vegetation, instanced in world space for real parallax.
   // Depth-writing cutouts avoid translucent sorting and limit mobile overdraw.
-  function vegetation(path,count,isTree){
+  function vegetation(path,mainCount,isTree,branchCount){
     const map=texture(path,true),geo=new THREE.InstancedBufferGeometry();
     geo.setAttribute('position',new THREE.Float32BufferAttribute([-.5,0,0,.5,0,0,-.5,1,0,.5,1,0],3));geo.setAttribute('uv',new THREE.Float32BufferAttribute([0,0,1,0,0,1,1,1],2));geo.setIndex([0,1,2,2,1,3]);
+    const count=mainCount+branchCount, clear=isTree?9:3.15;
     const offsets=new Float32Array(count*3),scales=new Float32Array(count*2),variants=new Float32Array(count);
     for(let i=0;i<count;i++){
-      const z=45-rand()*325,side=i%2?1:-1,dist=isTree?9+Math.pow(rand(),1.6)*65:3.15+Math.pow(rand(),2)*24,x=roadX(z)+side*dist;
-      offsets.set([x,terrainHeight(x,z)-.08,z],i*3);const h=isTree?4.5+rand()*5:.48+Math.pow(rand(),1.7)*.75;scales.set([h*(isTree?1.35+rand()*.45:1.6+rand()*.8),h],i*2);variants[i]=rand();
+      let x,z;
+      const dist=isTree?9+Math.pow(rand(),1.6)*65:3.15+Math.pow(rand(),2)*24;
+      if(i<mainCount){z=45-rand()*325;const side=i%2?1:-1;x=clearX(roadX(z)+side*dist,z,clear);}
+      else{const spot=branchSpot(isTree?9+Math.pow(rand(),1.6)*30:dist,clear);x=spot?.[0]??null;z=spot?.[1]??0;}
+      offsets.set(x===null?[0,HIDDEN,z]:[x,terrainHeight(x,z)-.08,z],i*3);const h=isTree?4.5+rand()*5:.48+Math.pow(rand(),1.7)*.75;scales.set([h*(isTree?1.35+rand()*.45:1.6+rand()*.8),h],i*2);variants[i]=rand();
     }
     geo.setAttribute('offset',new THREE.InstancedBufferAttribute(offsets,3));geo.setAttribute('scale',new THREE.InstancedBufferAttribute(scales,2));geo.setAttribute('variant',new THREE.InstancedBufferAttribute(variants,1));
     const mat=new THREE.ShaderMaterial({side:THREE.DoubleSide,uniforms:{map:{value:map},time:{value:0},tree:{value:isTree?1:0}},vertexShader:`attribute vec3 offset;attribute vec2 scale;attribute float variant;uniform float time;uniform float tree;varying vec2 vUv;varying float depth;varying float shade;void main(){vUv=uv;if(variant>.5)vUv.x=1.-vUv.x;vec3 right=normalize(vec3(viewMatrix[0][0],0.,viewMatrix[2][0]));vec3 p=offset+right*position.x*scale.x+vec3(0.,position.y*scale.y,0.);p.x+=sin(time*.8+offset.z*.6)*pow(position.y,2.)*mix(.065,.018,tree);vec4 mv=viewMatrix*vec4(p,1.);depth=-mv.z;shade=.84+variant*.18;gl_Position=projectionMatrix*mv;if(depth>125.&&tree<.5)gl_Position=vec4(2.,2.,2.,1.);}`,fragmentShader:`uniform sampler2D map;uniform float tree;varying vec2 vUv;varying float depth;varying float shade;void main(){vec4 tex=texture2D(map,vUv);if(tex.a<mix(.55,.72,tree))discard;vec3 col=tex.rgb*shade*mix(vec3(.72,.60,.40),vec3(.70,.80,.72),tree);col*=mix(.52,1.,smoothstep(0.,.48,vUv.y));float fog=1.-exp(-pow(depth*.0045,2.));gl_FragColor=vec4(mix(col,vec3(.445,.413,.31),fog),1.);
@@ -97,10 +127,10 @@ export function createSavanna(canvas, state, { mobile, calm, onReady }) {
     }
     const mesh=add(new THREE.Mesh(geo,mat));mesh.frustumCulled=false;return mat;
   }
-  const treeCards=vegetation('/textures/acacia.webp',mobile?55:100,true);
-  const grassCards=vegetation('/textures/grass.webp',mobile?4200:12000,false);
+  const treeCards=vegetation('/textures/acacia.webp',mobile?55:100,true,mobile?18:34);
+  const grassCards=vegetation('/textures/grass.webp',mobile?4200:12000,false,mobile?1400:4000);
   const rocks=add(new THREE.InstancedMesh(new THREE.DodecahedronGeometry(1,1),new THREE.MeshStandardMaterial({color:'#918268',map:soil,roughness:1}),mobile?65:160));
-  for(let i=0;i<rocks.count;i++){const z=40-rand()*300,x=roadX(z)+(rand()>.5?1:-1)*(3.25+rand()*9);dummy.position.set(x,terrainHeight(x,z),z);dummy.rotation.set(rand(),rand()*6.28,rand());const s=.07+Math.pow(rand(),3)*.45;dummy.scale.set(s*1.6,s*.5,s);dummy.updateMatrix();rocks.setMatrixAt(i,dummy.matrix)}rocks.computeBoundingSphere();
+  for(let i=0;i<rocks.count;i++){const z=40-rand()*300,x0=roadX(z)+(rand()>.5?1:-1)*(3.25+rand()*9),cx=clearX(x0,z,3.25),x=cx??x0;dummy.position.set(x,cx===null?HIDDEN:terrainHeight(x,z),z);dummy.rotation.set(rand(),rand()*6.28,rand());const s=.07+Math.pow(rand(),3)*.45;dummy.scale.set(s*1.6,s*.5,s);dummy.updateMatrix();rocks.setMatrixAt(i,dummy.matrix)}rocks.computeBoundingSphere();
 
   // The supplied emblem is a true bevelled, three-material GLB, not a camera-facing image.
   const monument=add(new THREE.Group());let logo=null;
@@ -121,12 +151,64 @@ export function createSavanna(canvas, state, { mobile, calm, onReady }) {
   }
   placeMonument();
 
+  // ── Crossroads signpost, standing in the wedge between the two tracks. ──
+  const woodMat=new THREE.MeshStandardMaterial({color:'#4a3420',roughness:.9});
+  const frameMat=new THREE.MeshStandardMaterial({color:'#17311f',roughness:.7,metalness:.1});
+  const goldMat=new THREE.MeshStandardMaterial({color:'#d4a94c',metalness:.75,roughness:.32});
+  const signs=[];
+  function signTexture(text,pointLeft){
+    const c=document.createElement('canvas');c.width=640;c.height=150;const g=c.getContext('2d');
+    const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=4;
+    const draw=()=>{g.clearRect(0,0,640,150);g.beginPath();
+      if(pointLeft){g.moveTo(8,75);g.lineTo(80,8);g.lineTo(632,8);g.lineTo(632,142);g.lineTo(80,142);}
+      else{g.moveTo(632,75);g.lineTo(560,8);g.lineTo(8,8);g.lineTo(8,142);g.lineTo(560,142);}
+      g.closePath();g.fillStyle='#173b29';g.fill();g.lineWidth=7;g.strokeStyle='#d9ae4f';g.stroke();
+      g.fillStyle='#f6ead0';g.font='700 66px Barlow, "Arial Narrow", sans-serif';g.textAlign='center';g.textBaseline='middle';
+      g.fillText(text,pointLeft?350:290,80);t.needsUpdate=true;needsRender=true;};
+    draw();document.fonts?.ready.then(()=>{if(!stopped)draw()});assetTextures.push(t);return t;
+  }
+  {
+    const s=26,z=branchZ(s),x=(roadX(z)+branchX(z))/2,y=terrainHeight(x,z),cam=new THREE.Vector3(roadX(FORK_Z),0,FORK_Z);
+    const post=add(new THREE.Group());post.position.set(x,y,z);post.rotation.y=Math.atan2(cam.x-x,cam.z-z);
+    const pole=new THREE.Mesh(new THREE.CylinderGeometry(.07,.09,3.1,10),woodMat);pole.position.y=1.55;post.add(pole);
+    [['LE BUREAU',true,2.55,-.55],['LA ROUTE',false,1.95,.55]].forEach(([label,left,h,dx])=>{
+      const m=new THREE.Mesh(new THREE.PlaneGeometry(1.75,.41),new THREE.MeshStandardMaterial({map:signTexture(label,left),transparent:true,alphaTest:.5,side:THREE.DoubleSide,roughness:.8}));
+      m.position.set(dx,h,.1);post.add(m);signs.push(m);
+    });
+  }
+
+  // ── Executive-board photographs standing along the left-hand track. ──
+  const photoGroups=[], photoCenters=[], photoLoader=new THREE.TextureLoader();
+  function photoBoard(src,width,postHeight){
+    const group=new THREE.Group(),height=width*607/1080;
+    const map=photoLoader.load(src,()=>{needsRender=true});map.colorSpace=THREE.SRGBColorSpace;map.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());assetTextures.push(map);
+    const cy=postHeight+height/2;
+    const back=new THREE.Mesh(new THREE.BoxGeometry(width+.34,height+.34,.12),frameMat);back.position.y=cy;group.add(back);
+    const rimBox=new THREE.Mesh(new THREE.BoxGeometry(width+.12,height+.12,.13),goldMat);rimBox.position.y=cy;group.add(rimBox);
+    const photo=new THREE.Mesh(new THREE.PlaneGeometry(width,height),new THREE.MeshBasicMaterial({map,toneMapped:false,color:'#eeeeee'}));photo.position.set(0,cy,.075);group.add(photo);
+    for(const sx of [-1,1]){const leg=new THREE.Mesh(new THREE.CylinderGeometry(.06,.075,postHeight+.25,8),woodMat);leg.position.set(sx*width*.36,(postHeight+.25)/2-.12,-.02);group.add(leg)}
+    group.userData.center=cy;return group;
+  }
+  const lateral=mobile?3.9:4.6;
+  for(let i=0;i<BRANCH_SIDE_PHOTOS;i++){
+    const s=BRANCH_FIRST_PHOTO+i*BRANCH_SPACING,side=i%2?1:-1,z=branchZ(s),x=branchX(z)+side*lateral,y=terrainHeight(x,z);
+    const g=add(photoBoard(BRANCH_IMAGES[i],4.4,1.15));g.position.set(x,y,z);
+    // Face the spot where the camera pauses to look at this board.
+    const vz=branchZ(s-7),vx=branchX(vz);g.rotation.y=Math.atan2(vx-x,vz-z);
+    photoGroups.push(g);photoCenters.push({s,point:new THREE.Vector3(x,y+g.userData.center,z)});
+  }
+  const finaleZ=branchZ(BRANCH_FINALE),finaleX=branchX(finaleZ),finaleY=roadHeight(finaleZ);
+  const finale=add(photoBoard(BRANCH_IMAGES[7],7.2,1.35));finale.position.set(finaleX,finaleY,finaleZ);
+  {const vz=branchZ(BRANCH_FINALE-12),vx=branchX(vz);finale.rotation.y=Math.atan2(vx-finaleX,vz-finaleZ);}
+  const finaleCenter=new THREE.Vector3(finaleX,finaleY+finale.userData.center,finaleZ);
+  const finaleStop=BRANCH_FINALE-(mobile?(innerWidth<innerHeight?17:11):9);
+
   const dustCount=mobile?100:320, positions=new Float32Array(dustCount*3),seeds=new Float32Array(dustCount);
   for(let i=0;i<dustCount;i++){const z=40-rand()*290;positions.set([roadX(z)+(rand()-.5)*22,1+rand()*7,z],i*3);seeds[i]=rand()}
   const dustGeo=new THREE.BufferGeometry();dustGeo.setAttribute('position',new THREE.BufferAttribute(positions,3));dustGeo.setAttribute('seed',new THREE.BufferAttribute(seeds,1));
   const dustMat=new THREE.ShaderMaterial({transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,uniforms:{time:{value:0},dpr:{value:quality}},vertexShader:`attribute float seed;uniform float time;uniform float dpr;varying float alpha;void main(){vec3 p=position;p.x+=sin(time*.23+seed*60.)*.4;p.y+=sin(time*.32+seed*90.)*.3;vec4 mv=modelViewMatrix*vec4(p,1.);gl_Position=projectionMatrix*mv;gl_PointSize=clamp(38./-mv.z,1.,3.)*dpr;alpha=(.3+seed*.6)*(1.-smoothstep(10.,65.,-mv.z));}`,fragmentShader:`varying float alpha;void main(){float d=length(gl_PointCoord-.5);gl_FragColor=vec4(1.,.76,.40,(1.-smoothstep(.1,.5,d))*alpha*.5);}`});add(new THREE.Points(dustGeo,dustMat));
 
-  const pointer=new THREE.Vector2(), look=new THREE.Vector3();
+  const pointer=new THREE.Vector2(), look=new THREE.Vector3(), branchPos=new THREE.Vector3(), branchLook=new THREE.Vector3();
   let lastTime=0,previousProgress=-1,elapsed=0,frames=0,slow=0;
   const frameSamples=[],diagnostic={frames:0,drawCalls:0,triangles:0,pixelRatio:quality,mobile,calm,frameSamples};window.__UOSSA_PERF__=diagnostic;
   const resize=()=>{needsRender=true;camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);placeMonument()};window.addEventListener('resize',resize);
@@ -142,7 +224,25 @@ export function createSavanna(canvas, state, { mobile, calm, onReady }) {
       pointer.lerp(state.pointer,.04);
       const cameraHeight=mobile?2.2:2.35;
       camera.position.set(roadX(z)+(calm||mobile?0:pointer.x*.11),roadHeight(z)+cameraHeight,z);
-      const ahead=z-16;look.set(roadX(ahead),roadHeight(ahead)+1.58,ahead);camera.lookAt(look);
+      const ahead=z-16;look.set(roadX(ahead),roadHeight(ahead)+1.58,ahead);
+      const br=state.branch;
+      if(br&&br.blend>0&&!calm){
+        // Ease the camera along the left-hand track; scroll sets the target distance.
+        if(br.snap){br.s=br.target;br.snap=false}
+        br.s+=(br.target-br.s)*(1-Math.exp(-Math.min(dt,.1)*4.5));
+        if(Math.abs(br.target-br.s)>.002)needsRender=true;
+        const s=Math.min(Math.max(br.s,0),finaleStop),zb=branchZ(s),za=branchZ(s+16);
+        branchPos.set(branchX(zb)+(mobile?0:pointer.x*.11),roadHeight(zb)+cameraHeight,zb);
+        branchLook.set(branchX(za),roadHeight(za)+1.58,za);
+        let w=0,target=null;
+        for(const ph of photoCenters){const k=Math.exp(-(((s-(ph.s-7))/6.5)**2));if(k>w){w=k;target=ph.point}}
+        if(target)branchLook.lerp(target,w*(mobile&&camera.aspect<1?.9:.55));
+        const f=Math.min(1,Math.max(0,(s-(finaleStop-26))/26));branchLook.lerp(finaleCenter,f*f*(3-2*f)*.85);
+        const e=br.blend*br.blend*(3-2*br.blend);
+        camera.position.lerp(branchPos,e);look.lerp(branchLook,e);
+        state.branchCamera=s;
+      }
+      camera.lookAt(look);
       // The view steers into bends; no arbitrary orbiting or vertical roller-coaster motion.
       sky.position.copy(camera.position);
       skyMat.uniforms.time.value=t;skyMat.uniforms.pointer.value.copy(pointer);grassMat.uniforms.time.value=t;grassMat.uniforms.pointer.value.copy(pointer);dustMat.uniforms.time.value=t;treeCards.uniforms.time.value=t;grassCards.uniforms.time.value=t;

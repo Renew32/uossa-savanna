@@ -1078,7 +1078,7 @@ footer {
 .logo-fallback .hero-emblem-fallback{display:block;position:absolute;right:14%;top:27svh;width:180px;border-radius:50%}
 @media(max-width:760px){.shade{background:linear-gradient(90deg,#09180ec7,#111d1255 65%,#14221822),linear-gradient(0deg,#0a180fb0,transparent 50%,#11190f44)}.logo-fallback .hero-emblem-fallback{width:105px;top:15svh;right:12%}}
 .shade::after{content:'';position:absolute;inset:0;background:linear-gradient(270deg,rgba(6,19,12,.67),rgba(6,19,12,.34) 50%,transparent 90%);opacity:0;transition:opacity .8s ease}
-html[data-chapter='2'] .shade::after,html[data-chapter='3'] .shade::after{opacity:1}
+html[data-chapter='3'] .shade::after,html[data-chapter='4'] .shade::after{opacity:1}
 .chapter h1,.chapter h2{text-shadow:0 3px 30px #06170c55}
 
 /* Two new stops on the continuous savanna journey. */
@@ -1100,7 +1100,7 @@ html[data-chapter='2'] .shade::after,html[data-chapter='3'] .shade::after{opacit
 .instagram-link{display:flex;align-items:center;gap:9px;min-height:40px;padding:8px 13px;border:1px solid #d8c39566;border-radius:30px;background:#142d22ed;text-decoration:none;font-size:11px}
 .instagram-link svg{width:18px;height:18px}
 .instagram-link:hover{border-color:var(--gold);color:var(--gold)}
-html[data-chapter="3"] .shade,html[data-chapter="4"] .shade{background-color:#06170b44}
+html[data-chapter="4"] .shade{background-color:#06170b44}
 @media(max-width:900px){.bureau-content{gap:24px}.top-nav{gap:16px}.bureau h2{font-size:52px}}
 @media(max-width:760px){
  .bureau-content{display:flex;flex-direction:column;justify-content:center;align-items:stretch;gap:20px;padding:90px var(--pad) 90px}
@@ -1169,3 +1169,71 @@ html[data-chapter="3"] .shade,html[data-chapter="4"] .shade{background-color:#06
 .lightbox-toolbar,.lightbox-navigation{display:flex;justify-content:space-between;align-items:center;gap:15px;padding:6px 0 16px;font-size:13px}.lightbox-navigation{padding:16px 0 0}
 .board-lightbox button{font:inherit;color:var(--cream);background:#193b2b;border:1px solid #d6b66a66;padding:12px 18px;cursor:pointer}
 @media(max-width:760px){.gallery-heading{display:block}.gallery-heading h3{font-size:38px}.board-grid{grid-template-columns:1fr;gap:28px}.board-grid .portrait-sheet{grid-column:auto}.board-lightbox{padding:10px;width:98vw}.board-lightbox button{padding:12px;font-size:12px}}
+
+/* ── Le carrefour: the camera holds at the fork and offers two arrows. ── */
+.progress-track{height:140px}
+.crossroads h2{font-size:clamp(64px,7.6vw,128px)}
+.crossroads .body-copy{max-width:440px;line-height:1.7}
+.fork-arrows{position:absolute;left:0;right:70px;bottom:15svh;display:flex;justify-content:space-between;align-items:flex-end;gap:24px;pointer-events:none}
+.fork-arrow{pointer-events:auto;display:flex;align-items:center;gap:18px;padding:0;background:none;border:0;text-align:left;font-size:20px;color:var(--cream)}
+.fork-arrow.right{text-align:right}
+.fork-arrow small{display:block;font-size:10px;letter-spacing:.2em;color:var(--gold);margin-bottom:7px}
+.fork-arrow em{display:block;font-style:normal;font-size:11px;letter-spacing:.06em;color:#c9c5b8;margin-top:6px}
+.fork-circle{display:grid;place-items:center;flex-shrink:0;width:78px;height:78px;border-radius:50%;border:1px solid #e8bd6f99;background:#0f2a1fcc;color:var(--gold);font-size:30px;box-shadow:0 0 0 0 #e8bd6f55;transition:transform .3s,background .3s;animation:fork-pulse 2.4s ease-out infinite}
+.fork-arrow.left:hover .fork-circle{transform:translateX(-6px);background:#224a36}
+.fork-arrow.right:hover .fork-circle{transform:translateX(6px);background:#224a36}
+@keyframes fork-pulse{0%{box-shadow:0 0 0 0 #e8bd6f55}70%{box-shadow:0 0 0 16px #e8bd6f00}100%{box-shadow:0 0 0 0 #e8bd6f00}}
+.calm .fork-arrows{position:relative;right:auto;bottom:auto;margin-top:40px}
+@media(max-width:760px){
+ .crossroads h2{font-size:clamp(46px,11vw,72px)}
+ .fork-arrows{right:0;bottom:120px;flex-direction:column;align-items:stretch;gap:14px}
+ .fork-arrow{font-size:16px;gap:14px;padding:10px 12px;background:#0f2a1fcc;border:1px solid #e8bd6f44}
+ .fork-arrow.right{justify-content:flex-end}
+ .fork-circle{width:52px;height:52px;font-size:22px}
+ .progress-track{height:118px}
+}
+
+/* ── The left-hand track: a transparent scroll layer over the live 3D scene. ── */
+.branch-mode{overflow:hidden}
+.branch-mode #journey,.branch-mode .header,.branch-mode .chapter-nav,.branch-mode .chapter-caption{opacity:0;pointer-events:none}
+#journey,.header,.chapter-nav,.chapter-caption{transition:opacity .7s ease}
+.branch-mode .shade{opacity:.55}
+.shade{transition:opacity .7s ease}
+.branch-layer{position:fixed;inset:0;z-index:30;overflow-y:auto;overscroll-behavior:contain;opacity:0;visibility:hidden;transition:opacity .8s ease .5s,visibility 0s linear 1.3s;scrollbar-width:none}
+.branch-layer::-webkit-scrollbar{display:none}
+.branch-layer.open{opacity:1;visibility:visible;transition:opacity .8s ease .9s,visibility 0s}
+.branch-topbar{position:sticky;top:0;z-index:2;display:flex;justify-content:space-between;align-items:center;gap:20px;padding:22px var(--pad);background:linear-gradient(#0a1a12d9,#0a1a1200)}
+.branch-topbar>span{font-size:10px;letter-spacing:.16em;color:var(--gold)}
+.branch-topbar .route-back{background:#0f2a1fcc;backdrop-filter:blur(6px)}
+.branch-stop{height:100dvh;display:flex;align-items:flex-end;padding:0 var(--pad) 13svh;margin-top:-1px}
+.branch-stop:first-of-type{margin-top:-86px}
+.branch-stop.card-right{justify-content:flex-end}
+.branch-card{margin:0;width:min(400px,86vw);padding:22px 24px;background:#0c2219d9;border:1px solid #e8bd6f55;backdrop-filter:blur(8px);box-shadow:0 24px 60px #03100a80}
+.branch-card figcaption{font-size:15px;line-height:1.6}
+.branch-count{display:block;font-size:10px;letter-spacing:.18em;color:var(--gold);margin-bottom:10px}
+.branch-card button,.branch-actions a{display:inline-block;margin-top:16px;padding:11px 16px;background:#173c2d;border:1px solid #d6b66a99;color:var(--cream);font-size:12px;text-decoration:none;cursor:pointer;transition:background .25s}
+.branch-card button:hover,.branch-actions a:hover{background:#28523d}
+.branch-photo{display:none;width:100%;height:auto;margin-bottom:14px;border:1px solid #e6c88555}
+.branch-intro{align-items:center}
+.branch-card.intro{width:min(560px,90vw);background:none;border:0;box-shadow:none;backdrop-filter:none;padding:0}
+.branch-card.intro h2{font-size:clamp(56px,7vw,110px);text-shadow:0 3px 30px #06170c88;margin-bottom:20px}
+.branch-card.intro .body-copy{max-width:420px;line-height:1.7;text-shadow:0 2px 14px #06170caa}
+.branch-hint{display:flex;align-items:center;gap:16px;margin-top:28px;font-size:10px;letter-spacing:.18em;color:#d8d3c4}
+.branch-finale{justify-content:center;align-items:flex-end;padding-bottom:6svh}
+.branch-card.finale{width:min(720px,92vw);text-align:center}
+.branch-card.finale h3{font:italic 500 clamp(30px,3.4vw,46px)/1.05 Cormorant,Georgia,serif;color:var(--gold);margin:0 0 8px}
+.branch-card.finale p{font-size:11px;opacity:.75;margin:0}
+.branch-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:0 10px}
+/* Reduced motion or no WebGL: the photos are shown in the cards themselves. */
+.calm .branch-layer,.no-webgl .branch-layer{background:linear-gradient(115deg,#10271ef5,#14251ce8),url('/textures/safari-sunset.webp') center/cover fixed}
+.calm .branch-photo,.no-webgl .branch-photo{display:block}
+.calm .branch-stop,.no-webgl .branch-stop{height:auto;min-height:0;padding-top:30px;padding-bottom:30px;justify-content:center}
+.calm .branch-intro,.no-webgl .branch-intro{min-height:70dvh}
+.calm .branch-card,.no-webgl .branch-card{width:min(760px,92vw)}
+@media(max-width:760px){
+ .branch-topbar{padding:15px var(--pad)}.branch-topbar>span{display:none}
+ .branch-stop,.branch-stop.card-right{justify-content:center;padding-bottom:9svh}
+ .branch-card{padding:16px 18px}.branch-card figcaption{font-size:13px}
+ .branch-card.intro h2{font-size:52px}
+ .branch-card.finale{padding:16px}.branch-actions a,.branch-actions button{font-size:11px;padding:10px 12px;margin-top:10px}
+}
