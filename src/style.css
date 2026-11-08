@@ -1219,8 +1219,8 @@ html[data-chapter="4"] .shade{background-color:#06170b44}
 .branch-card.intro h2{font-size:clamp(56px,7vw,110px);text-shadow:0 3px 30px #06170c88;margin-bottom:20px}
 .branch-card.intro .body-copy{max-width:420px;line-height:1.7;text-shadow:0 2px 14px #06170caa}
 .branch-hint{display:flex;align-items:center;gap:16px;margin-top:28px;font-size:10px;letter-spacing:.18em;color:#d8d3c4}
-.branch-finale{justify-content:center;align-items:flex-end;padding-bottom:6svh}
-.branch-card.finale{width:min(720px,92vw);text-align:center}
+.branch-finale{justify-content:center;align-items:flex-end;padding-bottom:3svh}
+.branch-card.finale{width:min(720px,92vw);text-align:center;padding:16px 22px}
 .branch-card.finale h3{font:italic 500 clamp(30px,3.4vw,46px)/1.05 Cormorant,Georgia,serif;color:var(--gold);margin:0 0 8px}
 .branch-card.finale p{font-size:11px;opacity:.75;margin:0}
 .branch-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:0 10px}

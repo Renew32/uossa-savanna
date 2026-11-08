@@ -198,7 +198,7 @@ export function createSavanna(canvas, state, { mobile, calm, onReady }) {
     photoGroups.push(g);photoCenters.push({s,point:new THREE.Vector3(x,y+g.userData.center,z)});
   }
   const finaleZ=branchZ(BRANCH_FINALE),finaleX=branchX(finaleZ),finaleY=roadHeight(finaleZ);
-  const finale=add(photoBoard(BRANCH_IMAGES[7],7.2,1.35));finale.position.set(finaleX,finaleY,finaleZ);
+  const finale=add(photoBoard(BRANCH_IMAGES[7],7.2,2.3));finale.position.set(finaleX,finaleY,finaleZ);
   {const vz=branchZ(BRANCH_FINALE-12),vx=branchX(vz);finale.rotation.y=Math.atan2(vx-finaleX,vz-finaleZ);}
   const finaleCenter=new THREE.Vector3(finaleX,finaleY+finale.userData.center,finaleZ);
   const finaleStop=BRANCH_FINALE-(mobile?(innerWidth<innerHeight?17:11):9);
