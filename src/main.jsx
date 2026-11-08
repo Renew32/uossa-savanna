@@ -90,13 +90,48 @@ const boardImages = [
 // Order along the bureau road: three boards beside the road, then the group photo as the finale.
 const branchOrder = [1, 2, 3, 0];
 const branchTotal = String(branchOrder.length).padStart(2, '0');
+// Full-screen viewer for the bureau photos. On a phone: double-tap (or « Zoom + ») zooms 2.5× on
+// the touched spot and the zoomed photo pans with the finger; a sideways swipe changes photo.
+const ZOOM = 2.5;
 function BoardLightbox({selected,setSelected}){
-  const viewer=useRef(null);
+  const viewer=useRef(null), stage=useRef(null), gesture=useRef(null), lastTap=useRef({t:0,x:0,y:0});
+  const [zoomed,setZoomed]=useState(false);
   useEffect(()=>{if(selected!==null){if(!viewer.current.open)viewer.current.showModal()}else if(viewer.current.open)viewer.current.close()},[selected]);
+  useEffect(()=>{setZoomed(false);
+    // Preload the neighbouring photos so a swipe shows the next one at once.
+    if(selected!==null)for(const d of [1,-1])new Image().src=boardImages[(selected+d+boardImages.length)%boardImages.length].src;
+  },[selected]);
   const step=(delta)=>setSelected(i=>(i+delta+boardImages.length)%boardImages.length);
+  // Zoom in on a point of the screen (or the centre), keeping that point under the finger.
+  const zoomAt=(clientX,clientY)=>{
+    const box=stage.current,img=box?.querySelector('img');if(!img)return;
+    if(zoomed){setZoomed(false);return}
+    const r=box.getBoundingClientRect(),W=r.width,H=r.height,nw=img.naturalWidth||1080,nh=img.naturalHeight||607;
+    const k=Math.min(W/nw,H/nh),cw=nw*k,ch=nh*k,left=r.left+(W-cw)/2,top=r.top+(H-ch)/2;
+    const fx=Math.min(1,Math.max(0,((clientX??left+cw/2)-left)/cw)),fy=Math.min(1,Math.max(0,((clientY??top+ch/2)-top)/ch));
+    setZoomed(true);
+    requestAnimationFrame(()=>{const zw=cw*ZOOM,zh=ch*ZOOM;box.scrollLeft=fx*zw-W/2;box.scrollTop=fy*zh-H/2});
+  };
+  const down=(e)=>{gesture.current={x:e.clientX,y:e.clientY,t:e.timeStamp}};
+  const up=(e)=>{
+    const g=gesture.current;gesture.current=null;if(!g)return;
+    const dx=e.clientX-g.x,dy=e.clientY-g.y;
+    if(!zoomed&&Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)*1.3){step(dx<0?1:-1);return}
+    if(Math.hypot(dx,dy)>10)return;
+    const last=lastTap.current;
+    if(e.timeStamp-last.t<320&&Math.hypot(e.clientX-last.x,e.clientY-last.y)<30){lastTap.current={t:0,x:0,y:0};zoomAt(e.clientX,e.clientY)}
+    else lastTap.current={t:e.timeStamp,x:e.clientX,y:e.clientY};
+  };
+  const zoomStyle=()=>{const box=stage.current,img=box?.querySelector('img');if(!box||!img)return undefined;
+    const W=box.clientWidth,H=box.clientHeight,nw=img.naturalWidth||1080,nh=img.naturalHeight||607,k=Math.min(W/nw,H/nh);
+    return {width:nw*k*ZOOM,height:nh*k*ZOOM}};
   return <dialog ref={viewer} className="board-lightbox" aria-label="Galerie du bureau exécutif" data-lenis-prevent onCancel={e=>{e.preventDefault();e.stopPropagation();setSelected(null)}} onKeyDown={e=>{if(e.key==='ArrowRight'){e.preventDefault();step(1)}if(e.key==='ArrowLeft'){e.preventDefault();step(-1)}}}>
-      <div className="lightbox-toolbar"><span>{selected!==null ? `${branchOrder.indexOf(selected)+1} / ${branchOrder.length}` : ''}</span><button onClick={()=>setSelected(null)} autoFocus>Fermer ×</button></div>
-      {selected!==null&&<img src={boardImages[selected].src} alt={boardImages[selected].alt}/>}
+      <div className="lightbox-toolbar"><span aria-live="polite">{selected!==null ? `${branchOrder.indexOf(selected)+1} / ${branchOrder.length}` : ''}</span>
+        <span className="lightbox-tools"><button onClick={()=>zoomAt()} aria-pressed={zoomed}>{zoomed?'Zoom −':'Zoom +'}</button><button onClick={()=>setSelected(null)} autoFocus>Fermer ×</button></span></div>
+      <div ref={stage} className={`lightbox-stage ${zoomed?'zoomed':''}`} onPointerDown={down} onPointerUp={up} onPointerCancel={()=>{gesture.current=null}} onDoubleClick={e=>{if(e.nativeEvent.pointerType!=='touch'&&!matchMedia('(hover:none)').matches)zoomAt(e.clientX,e.clientY)}}>
+        {selected!==null&&<img src={boardImages[selected].src} alt={boardImages[selected].alt} decoding="async" draggable="false" style={zoomed?zoomStyle():undefined}/>}
+      </div>
+      <p className="lightbox-hint" aria-hidden="true">Touchez deux fois pour zoomer · glissez pour changer de photo</p>
       <div className="lightbox-navigation"><button onClick={()=>step(-1)}>← Précédente</button><button onClick={()=>step(1)}>Suivante →</button></div>
       <p className="gallery-credit">Photographies : @posetapierre.visuel · Publication UOSSA 2026–2027</p>
     </dialog>;

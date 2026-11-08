@@ -1281,3 +1281,21 @@ html[data-chapter="5"] .shade{background-color:#06170b44}
  .landscape{background:linear-gradient(90deg,rgba(9,17,13,.8),rgba(9,17,13,.15)),url("/textures/safari-sunset-mobile.webp") center/cover}
  .calm .branch-layer,.no-webgl .branch-layer{background:linear-gradient(115deg,#10271ef5,#14251ce8),url("/textures/safari-sunset-mobile.webp") center/cover fixed}
 }
+
+/* ── Photo viewer: zoom and swipe, full screen on a phone. ── */
+.board-lightbox[open]{display:flex;flex-direction:column}
+.lightbox-tools{display:flex;gap:8px}
+.lightbox-stage{position:relative;display:flex;height:72dvh;min-height:0;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none;cursor:zoom-in}
+.lightbox-stage img{margin:auto;width:100%;height:100%;max-height:none;object-fit:contain;-webkit-touch-callout:none}
+.lightbox-stage.zoomed{overflow:auto;touch-action:pan-x pan-y;cursor:zoom-out;overscroll-behavior:contain}
+.lightbox-stage.zoomed img{flex:none;max-width:none;object-fit:fill}
+.lightbox-hint{display:none;margin:10px 0 0;text-align:center;font-size:11px;letter-spacing:.04em;color:#c9c5b8}
+@media(hover:none){.lightbox-hint{display:block}}
+@media(max-width:760px){
+ .board-lightbox{width:100vw;height:100dvh;max-height:none;max-width:none;margin:0;border:0;
+   padding:max(10px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left))}
+ .lightbox-stage{flex:1;height:auto}
+ .lightbox-toolbar{padding-bottom:10px}
+ .lightbox-navigation{padding-top:10px}
+ .board-lightbox .gallery-credit{margin:8px 0 0;font-size:11px;text-align:center}
+}
