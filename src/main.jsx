@@ -11,6 +11,8 @@ import { START_Z, END_Z, TRAVEL, FORK_Z, JOIN_Z, SIDE_PATHS, SIDE_SCREENS, EXIT_
 import "./style.css";
 // Public files, under the site's base path ("/" locally, "/uossa-savanna/" on GitHub Pages).
 const asset = (path) => import.meta.env.BASE_URL + path;
+// Each ↗ in this file is followed by an invisible U+FE0E (text presentation selector):
+// without it, iOS draws the arrow as a blue emoji.
 
 gsap.registerPlugin(ScrollTrigger);
 const chapters = ["L’esprit", "La téranga", "Le carrefour", "Nos racines", "Votre place", "Ensemble"];
@@ -51,7 +53,7 @@ function RoutesMenu({ openRoute }) {
           <a key={name} href={`#${name}`} onClick={pick((e) => openRoute(e, name))}><span aria-hidden="true">{SIDES[name].arrow}</span>{SIDES[name].label}</a>
         ))}
         <a href="#inscription" className="routes-join" onClick={pick((e) => openRoute(e, "inscription"))}>
-          Rejoindre <span aria-hidden="true">{"↗\uFE0E"}</span>
+          Rejoindre <span aria-hidden="true">↗︎</span>
         </a>
       </nav>
     </div>
@@ -604,8 +606,8 @@ function App() {
           />
           <div className="hero-paths"><nav className="route-fork" aria-label="Choisir un parcours">
               <span className="fork-label">DEUX AUTRES CHEMINS À EXPLORER</span>
-              <a href="#bureau" onClick={(e) => openRoute(e,"bureau")}><span>01 / RENCONTRER</span>Le bureau exécutif <b aria-hidden="true">↗</b></a>
-              <a href="#inscription" onClick={(e) => openRoute(e,"inscription")}><span>02 / REJOINDRE</span>Inscription & recensement <b aria-hidden="true">↗</b></a>
+              <a href="#bureau" onClick={(e) => openRoute(e,"bureau")}><span>01 / RENCONTRER</span>Le bureau exécutif <b aria-hidden="true">↗︎</b></a>
+              <a href="#inscription" onClick={(e) => openRoute(e,"inscription")}><span>02 / REJOINDRE</span>Inscription & recensement <b aria-hidden="true">↗︎</b></a>
             </nav></div>
           <div className="hero-side reveal">
             <span>LES LIONS DE LA TÉRANGA</span>
@@ -772,8 +774,8 @@ function App() {
             </p>
             <nav className="route-fork" aria-label="Choisir un parcours">
               <span className="fork-label">DEUX AUTRES CHEMINS À EXPLORER</span>
-              <a href="#bureau" onClick={(e) => openRoute(e,"bureau")}><span>01 / RENCONTRER</span>Le bureau exécutif <b aria-hidden="true">↗</b></a>
-              <a href="#inscription" onClick={(e) => openRoute(e,"inscription")}><span>02 / REJOINDRE</span>Inscription & recensement <b aria-hidden="true">↗</b></a>
+              <a href="#bureau" onClick={(e) => openRoute(e,"bureau")}><span>01 / RENCONTRER</span>Le bureau exécutif <b aria-hidden="true">↗︎</b></a>
+              <a href="#inscription" onClick={(e) => openRoute(e,"inscription")}><span>02 / REJOINDRE</span>Inscription & recensement <b aria-hidden="true">↗︎</b></a>
             </nav>
             <div className="identity reveal">
               <img
@@ -796,7 +798,7 @@ function App() {
               className="return-link reveal"
               onClick={(e) => jump(e, 0)}
             >
-              Revivre le voyage <span>↗</span>
+              Revivre le voyage <span>↗︎</span>
             </a>
           </div>
           <footer>
@@ -828,7 +830,7 @@ function App() {
                 <span className="branch-count">{String(k + 1).padStart(2, '0')} / {branchTotal}</span>
                 {boardImages[index].alt}
               </figcaption>
-              <button onClick={() => setPhoto(index)}>Agrandir la photo <span aria-hidden="true">↗</span></button>
+              <button onClick={() => setPhoto(index)}>Agrandir la photo <span aria-hidden="true">↗︎</span></button>
             </figure>
           </section>
         ))}
@@ -838,7 +840,7 @@ function App() {
             <span className="branch-count">{branchTotal} / {branchTotal} · AU BOUT DU CHEMIN</span>
             <h3>Le bureau exécutif <span className="nowrap">2026–2027.</span></h3>
             <div className="branch-actions">
-              <button onClick={() => setPhoto(0)}>Agrandir la photo ↗</button>
+              <button onClick={() => setPhoto(0)}>Agrandir la photo ↗︎</button>
               <button onClick={() => continueRoad('bureau')}>Continuer la route →</button>
               <a href="#inscription" onClick={(e) => openRoute(e, "inscription")}>Prendre le chemin de l’inscription →</a>
               <button onClick={closeRoute}>← Revenir au carrefour</button>
@@ -860,7 +862,7 @@ function App() {
           <div className="branch-card finale long-title">
             <span className="branch-count">AU BOUT DU CHEMIN</span>
             <h3>Inscription et recensement des membres 2026–2027.</h3>
-            <a className="path-action" href={MEMBERSHIP_FORM} target="_blank" rel="noopener noreferrer">M’inscrire / me recenser <span aria-hidden="true">↗</span><small>OUVRIR LE FORMULAIRE GOOGLE</small></a>
+            <a className="path-action" href={MEMBERSHIP_FORM} target="_blank" rel="noopener noreferrer">M’inscrire / me recenser <span aria-hidden="true">↗︎</span><small>OUVRIR LE FORMULAIRE GOOGLE</small></a>
             <div className="branch-actions">
               <button onClick={() => continueRoad('inscription')}>Continuer la route →</button>
               <button onClick={closeRoute}>← Revenir au carrefour</button>
@@ -887,7 +889,7 @@ function App() {
           {calmShown ? "Animation réduite" : "Animation complète"}
         </button>
         <a className="instagram-link" href={INSTAGRAM} target="_blank" rel="noopener noreferrer" aria-label="Notre Instagram : @uossa.aesuo">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r=".8" fill="currentColor" stroke="none"/></svg><span>Instagram</span><span aria-hidden="true">↗</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r=".8" fill="currentColor" stroke="none"/></svg><span>Instagram</span><span aria-hidden="true">↗︎</span>
         </a>
         </div>
       </div>
