@@ -5,7 +5,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { START_Z, TRAVEL, END_Z, ROAD_HALF_WIDTH, roadX, roadSlope, roadHeight, terrainHeight, roadDistance, SIDE_PATHS, EXIT_SCREENS } from './route.js';
 
 // Executive-board photos along the bureau road (same order as the HTML captions), then the group photo.
-export const BUREAU_IMAGES = ['/bureau/02.webp','/bureau/03.webp','/bureau/04.webp','/bureau/05.webp','/bureau/06.webp','/bureau/07.webp','/bureau/08.webp'];
+export const BUREAU_IMAGES = ['/bureau/02.webp','/bureau/03.webp','/bureau/04.webp'];
 const GROUP_PHOTO = '/bureau-2026-2027.webp', LOGO = '/uossa-logo-2026.jpg';
 
 export function createSavanna(canvas, state, { mobile, calm, onReady }) {

@@ -72,11 +72,12 @@ function sidePath({ forkZ, side, turn, leg, hairpin, merge, gap, boards }) {
   };
 }
 
-// Bureau: to the left (-x) at the first crossroads; seven boards in facing pairs, then the group photo.
+// Bureau: to the left (-x) at the first crossroads; three boards, left / right / left, then the group photo
+// in the middle of the road at the end.
 // Inscription: to the right (+x) at the second crossroads; a single final board.
 export const SIDE_PATHS = {
-  bureau: sidePath({ forkZ: -52.36, side: 1, turn: 15, leg: 60, hairpin: 10, merge: 15, gap: 13,
-    boards: [[9, 1], [9, -1], [23, 1], [23, -1], [37, 1], [37, -1], [51, 1]] }),
+  bureau: sidePath({ forkZ: -52.36, side: 1, turn: 15, leg: 46, hairpin: 10, merge: 15, gap: 13,
+    boards: [[9, 1], [23, -1], [37, 1]] }),
   inscription: sidePath({ forkZ: -150, side: -1, turn: 15, leg: 14, hairpin: 8, merge: 15, gap: 12, boards: [] }),
 };
 // Scroll screens in each side road's layer: intro, one per board, the final board, the way back.

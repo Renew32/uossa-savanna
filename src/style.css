@@ -1187,12 +1187,22 @@ html[data-chapter="5"] .shade{background-color:#06170b44}
 .calm .fork-arrows{position:relative;right:auto;bottom:auto;margin-top:40px}
 @media(max-width:760px){
  .crossroads h2{font-size:clamp(46px,11vw,72px)}
- .fork-arrows{right:0;bottom:120px;flex-direction:column;align-items:stretch;gap:14px}
- .fork-arrow{font-size:16px;gap:14px;padding:10px 12px;background:#0f2a1fcc;border:1px solid #e8bd6f44}
- .fork-arrow.right{justify-content:flex-end}
- .fork-circle{width:52px;height:52px;font-size:22px}
+ /* Two compact buttons side by side, below the text: pushed to the bottom of the screen when
+    there is room, never over the text when there is not. */
+ .crossroads .chapter-content{display:flex;flex-direction:column}
+ .fork-arrows,.calm .fork-arrows{position:relative;left:auto;right:auto;bottom:auto;align-items:stretch;gap:10px;margin:auto 0 96px;padding-top:20px}
+ .fork-arrow{position:relative;flex:1 1 0;min-width:0;display:flex;flex-direction:column;justify-content:flex-start;padding:8px 10px 9px;font-size:14px;line-height:1.25;background:#0f2a1fcc;border:1px solid #e8bd6f44}
+ .fork-arrow small{font-size:8px;letter-spacing:.16em;line-height:24px;margin:0 0 3px;padding-left:31px}
+ .fork-arrow.right small{padding:0 31px 0 0}
+ .fork-arrow em{font-size:10px;letter-spacing:.03em;margin-top:3px}
+ .fork-arrow .nowrap{white-space:nowrap}
+ .fork-circle{position:absolute;top:8px;left:10px;width:24px;height:24px;font-size:12px}
+ .fork-arrow.right .fork-circle{left:auto;right:10px}
  .progress-track{height:118px}
 }
+/* Short phone screens (browser bars shown): start the crossroads text a little higher so the
+   buttons keep their place above the bottom bar. */
+@media(max-width:760px) and (min-height:601px) and (max-height:720px){.crossroads .chapter-content{padding-top:23svh}}
 
 /* ── The left-hand track: a transparent scroll layer over the live 3D scene. ── */
 .branch-mode{overflow:hidden}

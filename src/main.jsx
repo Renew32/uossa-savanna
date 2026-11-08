@@ -5,7 +5,7 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import Lenis from "lenis";
 import "lenis/dist/lenis.css";
 import { createSavanna } from "./scene.js";
-import { START_Z, END_Z, TRAVEL, FORK_Z, JOIN_Z, SIDE_SCREENS, EXIT_SCREENS } from "./route.js";
+import { START_Z, END_Z, TRAVEL, FORK_Z, JOIN_Z, SIDE_PATHS, SIDE_SCREENS, EXIT_SCREENS } from "./route.js";
 import "./style.css";
 
 gsap.registerPlugin(ScrollTrigger);
@@ -46,19 +46,16 @@ const boardImages = [
   {src:'/bureau/02.webp',alt:'Planche de portraits : coprésidence, président sortant et marketing'},
   {src:'/bureau/03.webp',alt:'Planche de portraits : vie interne, finances, événementiel et bénévoles'},
   {src:'/bureau/04.webp',alt:'Planche de portraits : projets, mentorat et équipe événementielle'},
-  {src:'/bureau/05.webp',alt:'Photographies de membres du bureau pendant la séance photo'},
-  {src:'/bureau/06.webp',alt:'Photographies de groupe entre deux prises'},
-  {src:'/bureau/07.webp',alt:'Portraits et photographies de groupe de l’équipe'},
-  {src:'/bureau/08.webp',alt:'Photographie du bureau exécutif réunissant six membres'},
 ];
-// Order along the bureau road: seven boards beside the road, then the group photo as the finale.
-const branchOrder = [1, 2, 3, 4, 5, 6, 7, 0];
+// Order along the bureau road: three boards beside the road, then the group photo as the finale.
+const branchOrder = [1, 2, 3, 0];
+const branchTotal = String(branchOrder.length).padStart(2, '0');
 function BoardLightbox({selected,setSelected}){
   const viewer=useRef(null);
   useEffect(()=>{if(selected!==null){if(!viewer.current.open)viewer.current.showModal()}else if(viewer.current.open)viewer.current.close()},[selected]);
   const step=(delta)=>setSelected(i=>(i+delta+boardImages.length)%boardImages.length);
   return <dialog ref={viewer} className="board-lightbox" aria-label="Galerie du bureau exécutif" data-lenis-prevent onCancel={e=>{e.preventDefault();e.stopPropagation();setSelected(null)}} onKeyDown={e=>{if(e.key==='ArrowRight'){e.preventDefault();step(1)}if(e.key==='ArrowLeft'){e.preventDefault();step(-1)}}}>
-      <div className="lightbox-toolbar"><span>{selected!==null ? `${branchOrder.indexOf(selected)+1} / 8` : ''}</span><button onClick={()=>setSelected(null)} autoFocus>Fermer ×</button></div>
+      <div className="lightbox-toolbar"><span>{selected!==null ? `${branchOrder.indexOf(selected)+1} / ${branchOrder.length}` : ''}</span><button onClick={()=>setSelected(null)} autoFocus>Fermer ×</button></div>
       {selected!==null&&<img src={boardImages[selected].src} alt={boardImages[selected].alt}/>}
       <div className="lightbox-navigation"><button onClick={()=>step(-1)}>← Précédente</button><button onClick={()=>step(1)}>Suivante →</button></div>
       <p className="gallery-credit">Photographies : @posetapierre.visuel · Publication UOSSA 2026–2027</p>
@@ -594,7 +591,7 @@ function App() {
             <div className="fork-arrows" role="group" aria-label="Choisir un chemin">
               <button className="fork-arrow left" data-side="bureau" onClick={(e) => openRoute(e, "bureau")}>
                 <span className="fork-circle" aria-hidden="true">←</span>
-                <span><small>À GAUCHE</small>Le bureau exécutif<em>Rencontrer l’équipe 2026–2027</em></span>
+                <span><small>À GAUCHE</small>Le bureau exécutif<em>Rencontrer l’équipe <span className="nowrap">2026–2027</span></em></span>
               </button>
               <button className="fork-arrow right" onClick={(e) => jump(e, 3)}>
                 <span><small>À DROITE</small>Continuer la route<em>Nos racines</em></span>
@@ -735,12 +732,12 @@ function App() {
             <span className="branch-hint"><span className="circle-arrow" aria-hidden="true">↓</span>SCROLLEZ POUR LONGER LE CHEMIN</span>
           </div>
         </section>
-        {branchOrder.slice(0, 7).map((index, k) => (
-          <section key={index} className={`branch-stop ${k % 2 ? 'card-left' : 'card-right'}`}>
+        {branchOrder.slice(0, -1).map((index, k) => (
+          <section key={index} className={`branch-stop ${SIDE_PATHS.bureau.boards[k].side > 0 ? 'card-right' : 'card-left'}`}>
             <figure className="branch-card">
               <img className="branch-photo" src={boardImages[index].src} alt="" width="1080" height="607" loading="lazy" />
               <figcaption>
-                <span className="branch-count">{String(k + 1).padStart(2, '0')} / 08</span>
+                <span className="branch-count">{String(k + 1).padStart(2, '0')} / {branchTotal}</span>
                 {boardImages[index].alt}
               </figcaption>
               <button onClick={() => setPhoto(index)}>Agrandir la photo <span aria-hidden="true">↗</span></button>
@@ -750,7 +747,7 @@ function App() {
         <section className="branch-stop branch-finale">
           <div className="branch-card finale">
             <img className="branch-photo" src={boardImages[0].src} alt="" width="1080" height="607" loading="lazy" />
-            <span className="branch-count">08 / 08 · AU BOUT DU CHEMIN</span>
+            <span className="branch-count">{branchTotal} / {branchTotal} · AU BOUT DU CHEMIN</span>
             <h3>Le bureau exécutif 2026–2027.</h3>
             <p>Photographies : @posetapierre.visuel</p>
             <div className="branch-actions">
