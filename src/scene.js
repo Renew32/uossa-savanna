@@ -193,18 +193,65 @@ vec3 clay=mix(vec3(.42,.255,.12),vec3(.67,.445,.25),grain*.5+coarse*.25);clay-=(
   const rim=new THREE.Mesh(new THREE.TorusGeometry(1.68,.026,6,64),new THREE.MeshStandardMaterial({color:'#d9ae45',metalness:.7,roughness:.3}));rim.rotation.x=Math.PI/2;rim.position.y=-2.62;monument.add(rim);
   new GLTFLoader().load(asset('models/uossa-logo-relief.glb'),gltf=>{
     if(stopped){gltf.scene.traverse(o=>{o.geometry?.dispose();o.material?.dispose()});return;}
-    logo=gltf.scene;logo.traverse(o=>{if(o.material)o.material.envMapIntensity=1.1});monument.add(logo);ready();
+    logo=gltf.scene;logo.traverse(o=>{if(o.material){o.material.envMapIntensity=1.5;if(o.material.roughness!==undefined)o.material.roughness=Math.max(.18,o.material.roughness*.8)}});monument.add(logo);monumentMaterials.length=0;ready();
   },undefined,()=>{document.documentElement.classList.add('logo-fallback');monument.visible=false;ready()});
-  const backing=new THREE.Mesh(new THREE.CylinderGeometry(3.08,3.08,.09,80),new THREE.MeshStandardMaterial({color:'#e1d1a8',metalness:.08,roughness:.76}));backing.rotation.x=Math.PI/2;backing.scale.x=.86;backing.position.set(0,0,-.22);monument.add(backing);
-  const border=new THREE.Mesh(new THREE.TorusGeometry(3.03,.022,6,96),new THREE.MeshStandardMaterial({color:'#b79645',metalness:.7,roughness:.3}));border.scale.x=.86;border.position.z=-.155;monument.add(border);
-  const monumentZ=20;
+  const backing=new THREE.Mesh(new THREE.CylinderGeometry(3.08,3.08,.09,80),new THREE.MeshStandardMaterial({color:'#f1e6c8',metalness:.06,roughness:.62}));backing.rotation.x=Math.PI/2;backing.scale.x=.86;backing.position.set(0,0,-.22);monument.add(backing);
+  const border=new THREE.Mesh(new THREE.TorusGeometry(3.03,.022,6,96),new THREE.MeshStandardMaterial({color:'#d4ab4c',metalness:.75,roughness:.25}));border.scale.x=.86;border.position.z=-.155;monument.add(border);
+  // A soft warm halo behind the emblem lifts it off the sky and the savanna.
+  const haloTexture=canvasTexture(256,256,g=>{const r=g.createRadialGradient(128,128,0,128,128,128);r.addColorStop(0,'rgba(255,214,140,.55)');r.addColorStop(.45,'rgba(255,190,110,.18)');r.addColorStop(1,'rgba(255,180,100,0)');g.fillStyle=r;g.fillRect(0,0,256,256)}).texture;
+  const halo=new THREE.Mesh(new THREE.PlaneGeometry(10.5,10.5),new THREE.MeshBasicMaterial({map:haloTexture,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,toneMapped:false,fog:false}));halo.position.z=-.5;monument.add(halo);
+  const monumentZ=20, groundOffset=3.32, discWidth=2*3.08*.86;
+  let standing=false;
+  // On a phone the emblem stands on the road, low in the frame, under the home text: its centre is
+  // placed at a chosen point of the first view and it rests on its pedestal. The camera passes it
+  // as soon as the journey starts (it fades and sinks into the road just before).
+  const probe=new THREE.PerspectiveCamera(),ray=new THREE.Vector3(),forward=new THREE.Vector3();
+  function standOnRoad(xN,yN,widthShare){
+    const camY=roadHeight(START_Z)+2.2;probe.fov=camera.fov;probe.aspect=camera.aspect;probe.near=.1;probe.far=100;probe.updateProjectionMatrix();
+    probe.position.set(roadX(START_Z),camY,START_Z);probe.lookAt(roadX(START_Z-16),roadHeight(START_Z-16)+1.58,START_Z-16);probe.updateMatrixWorld();
+    ray.set(xN,yN,.5).unproject(probe).sub(probe.position).normalize();probe.getWorldDirection(forward);
+    const tanV=Math.tan(THREE.MathUtils.degToRad(probe.fov/2)),along=ray.dot(forward);
+    const at=d=>{const t=d/along;return {x:probe.position.x+ray.x*t,y:probe.position.y+ray.y*t,z:probe.position.z+ray.z*t,scale:widthShare*2*d*tanV*probe.aspect/discWidth}};
+    let lo=1,hi=40;for(let i=0;i<40;i++){const m=(lo+hi)/2,q=at(m);if(q.y-groundOffset*q.scale-roadHeight(q.z)>0)lo=m;else hi=m}
+    return at((lo+hi)/2);
+  }
   function placeMonument(){
-    const narrow=innerWidth<=760, compact=innerHeight<620;
-    const scale=narrow?(compact?.35:.52):Math.min(1.08,camera.aspect*.75);
-    monument.scale.setScalar(scale);monument.position.set(roadX(monumentZ)+(narrow?1.65:Math.min(5.3,camera.aspect*4)),roadHeight(monumentZ)+(narrow?(compact?4.5:5.0):3.32*scale),monumentZ);
-    pedestal.visible=!narrow;rim.visible=!narrow;
+    const narrow=innerWidth<=760&&innerHeight>innerWidth;
+    standing=narrow;
+    if(narrow){
+      // Fit the emblem (disc and pedestal, about 1.2 times as tall as wide) in the free band
+      // between the home text and the line at the bottom of the first screen.
+      const top=(el,parent)=>{let y=0;for(let n=el;n&&n!==parent;n=n.offsetParent)y+=n.offsetTop;return y};
+      const hero=document.querySelector('.hero'),content=hero?.querySelector('.chapter-content'),link=hero?.querySelector('.journey-link'),foot=hero?.querySelector('.hero-bottom');
+      const H=innerHeight,W=innerWidth;
+      let from=H*.56,to=H*.86;
+      if(content&&link&&foot){from=top(link,content)-top(content,hero)+link.offsetHeight+14;to=top(foot,hero)-10}
+      const height=Math.max(80,to-from),width=Math.min(W*.56,height/1.21),centreY=from+(height-width*1.21)/2+width*1.21*(3.08/6.4);
+      const q=standOnRoad(.06,1-2*centreY/H,width/W);
+      monument.scale.setScalar(q.scale);monument.position.set(q.x,q.y,q.z);
+      Object.assign(monument.userData,{baseY:q.y,lead:START_Z-q.z,side:q.x-roadX(q.z),lift:q.y-roadHeight(q.z)});
+    }else{
+      const scale=Math.min(1.08,camera.aspect*.75);
+      monument.scale.setScalar(scale);monument.position.set(roadX(monumentZ)+Math.min(5.3,camera.aspect*4),roadHeight(monumentZ)+groundOffset*scale,monumentZ);monument.userData.baseY=monument.position.y;
+    }
+    pedestal.visible=true;rim.visible=true;
+  }
+  // Phone layout: while the home text is on screen the emblem keeps the same distance ahead of the
+  // camera, leading the way; after that it stays put, and fades and sinks as the camera reaches it.
+  const RELEASE_Z=START_Z-20,monumentMaterials=[];
+  function fadeMonument(){
+    if(!monumentMaterials.length)monument.traverse(o=>{if(o.material&&!monumentMaterials.includes(o.material))monumentMaterials.push(o.material)});
+    let baseY=monument.userData.baseY;
+    if(standing){
+      const u=monument.userData,z=Math.max(camera.position.z,RELEASE_Z)-u.lead;
+      monument.position.set(roadX(z)+u.side,roadHeight(z)+u.lift,z);baseY=monument.position.y;
+    }
+    const gap=camera.position.z-monument.position.z,k=standing?THREE.MathUtils.smoothstep(4.5-gap,0,3):0;
+    monument.visible=k<.99;monument.position.y=baseY-k*2.2*monument.scale.y;
+    for(const m of monumentMaterials){if(m===halo.material){m.opacity=1-k;continue}const fading=k>0;if(m.transparent!==fading){m.transparent=fading;m.needsUpdate=true}m.opacity=1-k}
   }
   placeMonument();
+  document.fonts?.ready.then(()=>{if(!stopped){placeMonument();needsRender=true}});
 
   // ── Boards and signposts: frames, rims and wooden legs are merged into three draw calls. ──
   const woodMat=new THREE.MeshStandardMaterial({color:'#4a3420',roughness:.9});
@@ -355,6 +402,7 @@ vec3 clay=mix(vec3(.42,.255,.12),vec3(.67,.445,.25),grain*.5+coarse*.25);clay-=(
       // The view steers into bends; no arbitrary orbiting or vertical roller-coaster motion.
       sky.position.copy(camera.position);
       skyMat.uniforms.time.value=t;skyMat.uniforms.pointer.value.copy(pointer);grassMat.uniforms.time.value=t;grassMat.uniforms.pointer.value.copy(pointer);dustMat.uniforms.time.value=t;treeCards.uniforms.time.value=t;grassCards.uniforms.time.value=t;
+      fadeMonument();
       if(logo){monument.rotation.y=-.20+(calm?0:pointer.x*.14+Math.sin(t*.28)*.045);monument.rotation.x=calm?0:Math.sin(t*.19)*.018}
       renderer.render(scene,camera);diagnostic.frames++;diagnostic.drawCalls=renderer.info.render.calls;diagnostic.triangles=renderer.info.render.triangles;previousProgress=p;needsRender=false;
       if(diagnostic.frames%120===0||calm){const sorted=[...frameSamples].sort((a,b)=>a-b);canvas.dataset.performance=JSON.stringify({frames:diagnostic.frames,samples:sorted.length,medianMs:sorted[Math.floor(sorted.length*.5)]||0,p95Ms:sorted[Math.floor(sorted.length*.95)]||0,drawCalls:diagnostic.drawCalls,triangles:diagnostic.triangles,pixelRatio:quality,mobile,calm,camera:[camera.position.x,camera.position.y,camera.position.z],roadCenter:roadX(z),progress:p,side:sd?.route?{route:sd.route,s:sd.s,blend:sd.blend}:null});}

@@ -1342,3 +1342,18 @@ a,button{touch-action:manipulation}
 .branch-topbar{padding-top:max(22px,env(safe-area-inset-top));padding-left:max(var(--pad),env(safe-area-inset-left));padding-right:max(var(--pad),env(safe-area-inset-right))}
 @media(max-width:1000px){.header{padding-top:max(24px,env(safe-area-inset-top))}}
 @media(max-width:760px){.header{padding-top:max(22px,env(safe-area-inset-top))}.bottom-ui{bottom:calc(19px + env(safe-area-inset-bottom))}}
+
+/* ── Phones: the home text sits higher, leaving the lower part of the view to the 3D emblem
+   standing on the road. ── */
+@media(max-width:760px) and (min-height:601px) and (orientation:portrait){
+ .hero .chapter-content,.calm .hero .chapter-content{padding-top:max(15svh,96px)}
+ .hero .chapter-content{mask-image:linear-gradient(transparent 58px,#000 90px,#000 calc(100% - 60px),transparent)}
+ html[data-chapter='0'] .shade{background:linear-gradient(90deg,#09180ec7,#111d1240 65%,#14221811),linear-gradient(0deg,#0a180fc0,transparent 17%,transparent 80%,#11190f44)}
+ .logo-fallback .hero-emblem-fallback,.no-webgl .hero-emblem-fallback{top:auto;bottom:calc(120px + env(safe-area-inset-bottom));right:auto;left:50%;transform:translateX(-50%);width:150px}
+}
+/* Shorter phone screens (browser bars shown): a slightly smaller title keeps room for the emblem. */
+@media(max-width:760px) and (min-height:601px) and (max-height:740px) and (orientation:portrait){
+ .hero .chapter-content,.calm .hero .chapter-content{padding-top:98px}
+ .hero h1{font-size:clamp(52px,13vw,64px)}
+ .hero .body-copy{margin-top:14px}
+}
