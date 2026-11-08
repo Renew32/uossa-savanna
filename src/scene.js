@@ -47,7 +47,8 @@ export function createSavanna(canvas, state, { mobile, calm, onReady }) {
   }
 
   // Distant photographic atmosphere only; the road and the near landscape are meshes.
-  const panorama = new THREE.TextureLoader().load(asset('textures/safari-sunset.webp'),ready,undefined,ready);panorama.colorSpace=THREE.SRGBColorSpace;
+  // Phones get a 2048 px panorama (306 KB instead of 1.8 MB): the sky is soft at their render size.
+  const panorama = new THREE.TextureLoader().load(asset(mobile?'textures/safari-sunset-mobile.webp':'textures/safari-sunset.webp'),ready,undefined,ready);panorama.colorSpace=THREE.SRGBColorSpace;
   const skyMat = new THREE.ShaderMaterial({toneMapped:false,side:THREE.BackSide,depthWrite:false,uniforms:{map:{value:panorama},time:{value:0},pointer:{value:new THREE.Vector2()}},vertexShader:`varying vec3 direction;void main(){direction=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,fragmentShader:`uniform sampler2D map;uniform float time;uniform vec2 pointer;varying vec3 direction;void main(){vec3 d=normalize(direction);vec2 uv=vec2(fract(.5+atan(d.x,-d.z)/6.28318),.5+asin(clamp(d.y,-1.,1.))/3.14159265);vec3 col=texture2D(map,uv).rgb;gl_FragColor=vec4(col,1.);\n#include <tonemapping_fragment>\n#include <colorspace_fragment>\n}`});
   const sky = add(new THREE.Mesh(new THREE.SphereGeometry(440,40,24),skyMat));sky.frustumCulled=false;
 
@@ -240,7 +241,7 @@ vec3 clay=mix(vec3(.42,.255,.12),vec3(.67,.445,.25),grain*.5+coarse*.25);clay-=(
     // The gold rim shows only around the front of the photo; from behind the board is plain green.
     rimParts.push(placed(new THREE.BoxGeometry(b.width+.12,height+.12,.1),base,0,cy,.02));
     for(const sx of [-1,1])woodParts.push(placed(new THREE.CylinderGeometry(.06,.075,b.post+.25,8),base,sx*b.width*.36,(b.post+.25)/2-.12,-.02));
-    const photo=add(new THREE.Mesh(new THREE.PlaneGeometry(b.width,height),new THREE.MeshBasicMaterial({map:b.src?photoTexture(b.src):inscriptionSign(),toneMapped:false,color:'#eeeeee'})));
+    const photo=add(new THREE.Mesh(new THREE.PlaneGeometry(b.width,height),new THREE.MeshBasicMaterial({map:b.src?photoTexture(b.src):inscriptionSign(),toneMapped:false})));
     photo.applyMatrix4(base);photo.position.add(new THREE.Vector3(0,cy,.08).applyQuaternion(photo.quaternion));farProps.push(photo);
     b.center=new THREE.Vector3(b.x,y+cy,b.z);
   }
@@ -295,15 +296,26 @@ vec3 clay=mix(vec3(.42,.255,.12),vec3(.67,.445,.25),grain*.5+coarse*.25);clay-=(
 
   const pointer=new THREE.Vector2(), look=new THREE.Vector3(), sidePos=new THREE.Vector3(), sideLook=new THREE.Vector3(), aimPoint=new THREE.Vector3(), aimDelta=new THREE.Vector3(), here={}, ahead={};
   let lastTime=0,previousProgress=-1,elapsed=0,frames=0,slow=0;
+  // Sharp when still: while the camera rests (a board, a crossroads, the home screen), the scene is
+  // drawn at the screen's full density (up to 2) so photos and the logo are crisp; it goes back to
+  // the lighter density as soon as the camera moves. Sharp frames run at 30 per second, and if the
+  // device cannot keep up, the picture is held still (one sharp frame) until the next movement.
+  const sharpRatio=Math.min(devicePixelRatio,2),prevPos=new THREE.Vector3(1e9,0,0),prevLook=new THREE.Vector3();
+  let sharp=false,lastMove=0,lastSharpFrame=0,sharpTicks=0,sharpSlow=0,frozen=false;
+  const canSharpen=()=>sharpRatio>quality+.05;
+  const setSharp=(on)=>{sharp=on;renderer.setPixelRatio(on?sharpRatio:quality);diagnostic.pixelRatio=on?sharpRatio:quality;sharpTicks=0;sharpSlow=0;frozen=false;needsRender=true};
   const frameSamples=[],diagnostic={frames:0,drawCalls:0,triangles:0,pixelRatio:quality,mobile,calm,frameSamples,camera:camera.position};window.__UOSSA_PERF__=diagnostic;  const resize=()=>{needsRender=true;camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);placeMonument();computeStops()};window.addEventListener('resize',resize);
   const onLost=e=>{e.preventDefault();canvas.style.opacity='0';document.documentElement.classList.add('no-webgl')};canvas.addEventListener('webglcontextlost',onLost);
   return {
     render(time){
       if(stopped)return;const p=state.progress;
-      if(calm&&!needsRender&&Math.abs(p-previousProgress)<.00001)return;
+      if(calm&&!needsRender&&Math.abs(p-previousProgress)<.00001){
+        if(!sharp&&canSharpen()&&time-lastMove>.25)setSharp(true);else return;
+      }
       const dt=lastTime?time-lastTime:1/60;lastTime=time;
-      if(dt>0&&dt<.2){frameSamples.push(dt*1000);if(frameSamples.length>600)frameSamples.shift();frames++;elapsed+=dt;if(dt>.022)slow++}
-      if(elapsed>4){if(slow/frames>.28&&quality>.8){quality=Math.max(.8,quality-.2);renderer.setPixelRatio(quality);diagnostic.pixelRatio=quality}frames=0;elapsed=0;slow=0}
+      if(sharp){sharpTicks++;if(dt>.045)sharpSlow++;if(sharpTicks>=20&&sharpSlow/sharpTicks>.4)frozen=true}
+      else if(dt>0&&dt<.2){frameSamples.push(dt*1000);if(frameSamples.length>600)frameSamples.shift();frames++;elapsed+=dt;if(dt>.022)slow++}
+      if(!sharp&&elapsed>4){if(slow/frames>.28&&quality>.8){quality=Math.max(.8,quality-.2);renderer.setPixelRatio(quality);diagnostic.pixelRatio=quality}frames=0;elapsed=0;slow=0}
       const t=calm?0:time, travel=calm?0:p,z=START_Z-travel*TRAVEL;
       pointer.lerp(state.pointer,.04);
       const cameraHeight=mobile?2.2:2.35;
@@ -333,6 +345,12 @@ vec3 clay=mix(vec3(.42,.255,.12),vec3(.67,.445,.25),grain*.5+coarse*.25);clay-=(
         sd.s=s;sd.arrived=sd.target>=uMax-.015&&u>=uMax-.015;
       }
       camera.lookAt(look);
+      const moved=camera.position.distanceToSquared(prevPos)>1e-8||look.distanceToSquared(prevLook)>1e-8;
+      prevPos.copy(camera.position);prevLook.copy(look);
+      if(moved){lastMove=time;if(sharp)setSharp(false)}
+      else if(!sharp&&canSharpen()&&time-lastMove>.25)setSharp(true);
+      if(sharp&&!needsRender&&(frozen||calm||time-lastSharpFrame<1/30-.002))return;
+      if(sharp)lastSharpFrame=time;
       for(const o of farProps)o.visible=o.position.distanceToSquared(camera.position)<FAR_PROPS;
       // The view steers into bends; no arbitrary orbiting or vertical roller-coaster motion.
       sky.position.copy(camera.position);
