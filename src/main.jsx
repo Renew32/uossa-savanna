@@ -11,11 +11,61 @@ import "./style.css";
 gsap.registerPlugin(ScrollTrigger);
 const chapters = ["L’esprit", "La téranga", "Le carrefour", "Nos racines", "Votre place", "Ensemble"];
 const chapterIds = ["esprit", "teranga", "carrefour", "racines", "votre-place", "ensemble"];
-// Side roads: the crossroads they leave from and the chapter where they rejoin the main road.
+// Side roads: the crossroads they leave from, the chapter where they rejoin the main road,
+// and their name in the header menu.
 const SIDES = {
-  bureau: { fork: "carrefour", join: "racines" },
-  inscription: { fork: "votre-place", join: "ensemble" },
+  bureau: { fork: "carrefour", join: "racines", label: "Le bureau exécutif" },
+  inscription: { fork: "votre-place", join: "ensemble", label: "Inscription & recensement" },
 };
+// The header menu « Les chemins »: every crossroads, in the order of the journey, with the roads
+// leaving it in the order of its arrows (a side road, or the main road on to the next chapter).
+// A new crossroads or a new road only needs its line here to appear in the menu.
+const CROSSROADS = [
+  { id: "carrefour", roads: [{ side: "bureau", arrow: "←" }, { next: "racines", arrow: "→" }] },
+  { id: "votre-place", roads: [{ next: "ensemble", arrow: "↑" }, { side: "inscription", arrow: "→" }] },
+];
+function RoutesMenu({ jump, openRoute }) {
+  const [open, setOpen] = useState(false);
+  const box = useRef(null), toggle = useRef(null);
+  useEffect(() => {
+    if (!open) return;
+    const away = (e) => { if (!box.current.contains(e.target)) setOpen(false); };
+    const key = (e) => { if (e.key === "Escape") { setOpen(false); toggle.current.focus(); } };
+    document.addEventListener("pointerdown", away);
+    document.addEventListener("focusin", away);
+    document.addEventListener("keydown", key);
+    return () => {
+      document.removeEventListener("pointerdown", away);
+      document.removeEventListener("focusin", away);
+      document.removeEventListener("keydown", key);
+    };
+  }, [open]);
+  const pick = (go) => (e) => { setOpen(false); go(e); };
+  const chapterLink = (id, content, className) => {
+    const index = chapterIds.indexOf(id);
+    return <a key={id} href={`#${id}`} className={className} onClick={pick((e) => jump(e, index))}>{content(chapters[index])}</a>;
+  };
+  return (
+    <div className={`routes-menu ${open ? "open" : ""}`} ref={box}>
+      <button ref={toggle} className="header-link routes-toggle" aria-expanded={open} aria-controls="routes-panel" onClick={() => setOpen((o) => !o)}>
+        Les chemins <span aria-hidden="true">▾</span>
+      </button>
+      <nav id="routes-panel" className="routes-panel" aria-label="Carrefours et chemins" hidden={!open}>
+        {CROSSROADS.map((fork, n) => (
+          <div className="routes-group" key={fork.id}>
+            {chapterLink(fork.id, (title) => <><small>CARREFOUR {String(n + 1).padStart(2, "0")}</small>{title}</>, "routes-fork")}
+            {fork.roads.map((road) => road.side
+              ? <a key={road.side} href={`#${road.side}`} onClick={pick((e) => openRoute(e, road.side))}><span aria-hidden="true">{road.arrow}</span>{SIDES[road.side].label}</a>
+              : chapterLink(road.next, (title) => <><span aria-hidden="true">{road.arrow}</span>{title}</>))}
+          </div>
+        ))}
+        <a href="#inscription" className="routes-join" onClick={pick((e) => openRoute(e, "inscription"))}>
+          Rejoindre <span aria-hidden="true">↗</span>
+        </a>
+      </nav>
+    </div>
+  );
+}
 const sideFromHash = () => (location.hash === "#bureau" || location.hash === "#inscription" ? location.hash.slice(1) : null);
 const INSTAGRAM = "https://www.instagram.com/uossa.aesuo/";
 const MEMBERSHIP_FORM = "https://docs.google.com/forms/d/e/1FAIpQLSdVQuKM8SwVUPYUUSURm9zUutTQMpb09Y5CgUI9p-yBa1WDDg/viewform?pli=1";
@@ -448,9 +498,7 @@ function App() {
           </a>
           <a href="#bureau" onClick={(e) => openRoute(e, "bureau")}>Le bureau</a>
         </nav>
-        <a href="#inscription" className="header-link" onClick={(e) => openRoute(e, "inscription")}>
-          Rejoindre <span>↗</span>
-        </a>
+        <RoutesMenu jump={jump} openRoute={openRoute} />
       </header>
       <aside className="chapter-nav" aria-label="Chapitres">
         <span className="rail-label">LE VOYAGE</span>
