@@ -1259,23 +1259,19 @@ html[data-chapter="5"] .shade{background-color:#06170b44}
  .branch-card.finale .path-action{font-size:15px;padding:13px 16px}
 }
 
-/* ── Header menu « Les chemins »: every crossroads and the roads leaving it, then « Rejoindre ». ── */
+/* ── Header menu « Les chemins »: every side road, then « Rejoindre ». ── */
 .routes-menu{position:relative}
 .routes-toggle{background:none}
 .routes-toggle span{font-size:13px;transition:transform .25s}
 .routes-menu.open .routes-toggle{background:#e8bd6f15;border-color:var(--gold)}
 .routes-menu.open .routes-toggle span{transform:rotate(180deg)}
-.routes-panel{position:absolute;top:calc(100% + 8px);right:0;width:290px;display:grid;gap:14px;padding:16px;background:#10271ef7;border:1px solid #e8bd6f44;box-shadow:0 18px 40px #04100a88;animation:routes-in .18s ease-out}
+.routes-panel{position:absolute;top:calc(100% + 8px);right:0;width:290px;display:grid;gap:4px;padding:12px;background:#10271ef7;border:1px solid #e8bd6f44;box-shadow:0 18px 40px #04100a88;animation:routes-in .18s ease-out}
 .routes-panel[hidden]{display:none}
 @keyframes routes-in{from{opacity:0;transform:translateY(-6px)}}
-.routes-group{display:grid;gap:2px}
-.routes-panel a{display:flex;align-items:baseline;gap:10px;padding:7px 10px;font-size:13px;line-height:1.3;transition:background .2s}
+.routes-panel a{display:flex;align-items:baseline;gap:10px;padding:10px 12px;font-size:14px;line-height:1.3;transition:background .2s}
 .routes-panel a:hover{background:#e8bd6f15}
 .routes-panel a>span{color:var(--gold);width:14px;flex-shrink:0;text-align:center}
-.routes-group a:not(.routes-fork){margin-left:10px;border-left:1px solid #e8bd6f33}
-.routes-panel .routes-fork{display:block;font-size:16px;padding:4px 10px 6px}
-.routes-fork small{display:block;font-size:9px;letter-spacing:.2em;color:var(--gold);margin-bottom:4px}
-.routes-panel .routes-join{justify-content:space-between;padding:11px 12px;border:1px solid #e8bd6f99;font-size:12px}
+.routes-panel .routes-join{justify-content:space-between;margin-top:8px;padding:11px 12px;border:1px solid #e8bd6f99;font-size:12px}
 .routes-panel .routes-join span{width:auto;font-size:17px}
 @media(max-width:760px){.routes-panel{width:min(290px,calc(100vw - 2 * var(--pad)))}}
 @media(prefers-reduced-motion:reduce){.routes-panel{animation:none}.routes-toggle span{transition:none}}

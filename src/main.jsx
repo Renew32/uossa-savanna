@@ -17,12 +17,10 @@ const SIDES = {
   bureau: { fork: "carrefour", join: "racines", label: "Le bureau exécutif", arrow: "←" },
   inscription: { fork: "votre-place", join: "ensemble", label: "Inscription & recensement", arrow: "→" },
 };
-// The header menu « Les chemins »: every crossroads, in the order of the journey, with the side
-// roads leaving it. A new side road only needs its entry in SIDES to appear in the menu.
-const CROSSROADS = chapterIds
-  .filter((id) => Object.values(SIDES).some((side) => side.fork === id))
-  .map((id) => ({ id, roads: Object.keys(SIDES).filter((name) => SIDES[name].fork === id) }));
-function RoutesMenu({ jump, openRoute }) {
+// The header menu « Les chemins »: every side road, in the order of the journey, then « Rejoindre ».
+// A new side road only needs its entry in SIDES to appear in the menu.
+const SIDE_ROADS = Object.keys(SIDES).sort((a, b) => chapterIds.indexOf(SIDES[a].fork) - chapterIds.indexOf(SIDES[b].fork));
+function RoutesMenu({ openRoute }) {
   const [open, setOpen] = useState(false);
   const box = useRef(null), toggle = useRef(null);
   useEffect(() => {
@@ -44,16 +42,9 @@ function RoutesMenu({ jump, openRoute }) {
       <button ref={toggle} className="header-link routes-toggle" aria-expanded={open} aria-controls="routes-panel" onClick={() => setOpen((o) => !o)}>
         Les chemins <span aria-hidden="true">▾</span>
       </button>
-      <nav id="routes-panel" className="routes-panel" aria-label="Carrefours et chemins" hidden={!open}>
-        {CROSSROADS.map((fork, n) => (
-          <div className="routes-group" key={fork.id}>
-            <a href={`#${fork.id}`} className="routes-fork" onClick={pick((e) => jump(e, chapterIds.indexOf(fork.id)))}>
-              <small>CARREFOUR {String(n + 1).padStart(2, "0")}</small>{chapters[chapterIds.indexOf(fork.id)]}
-            </a>
-            {fork.roads.map((name) => (
-              <a key={name} href={`#${name}`} onClick={pick((e) => openRoute(e, name))}><span aria-hidden="true">{SIDES[name].arrow}</span>{SIDES[name].label}</a>
-            ))}
-          </div>
+      <nav id="routes-panel" className="routes-panel" aria-label="Les chemins" hidden={!open}>
+        {SIDE_ROADS.map((name) => (
+          <a key={name} href={`#${name}`} onClick={pick((e) => openRoute(e, name))}><span aria-hidden="true">{SIDES[name].arrow}</span>{SIDES[name].label}</a>
         ))}
         <a href="#inscription" className="routes-join" onClick={pick((e) => openRoute(e, "inscription"))}>
           Rejoindre <span aria-hidden="true">{"↗\uFE0E"}</span>
@@ -494,7 +485,7 @@ function App() {
           </a>
           <a href="#bureau" onClick={(e) => openRoute(e, "bureau")}>Le bureau</a>
         </nav>
-        <RoutesMenu jump={jump} openRoute={openRoute} />
+        <RoutesMenu openRoute={openRoute} />
       </header>
       <aside className="chapter-nav" aria-label="Chapitres">
         <span className="rail-label">LE VOYAGE</span>
