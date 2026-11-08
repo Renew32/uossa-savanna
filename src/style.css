@@ -1357,3 +1357,31 @@ a,button{touch-action:manipulation}
  .hero h1{font-size:clamp(52px,13vw,64px)}
  .hero .body-copy{margin-top:14px}
 }
+
+/* ── Phone held sideways: short screen, everything more compact ── */
+@media(orientation:landscape) and (max-height:500px){
+ .header{padding-top:max(12px,env(safe-area-inset-top));padding-bottom:8px}
+ .top-nav,.hero-paths,.hero-side,.hero-bottom,.chapter-nav{display:none}
+ .chapter-content,.hero .chapter-content,.teranga .chapter-content,.roots .chapter-content,.together .chapter-content{padding-top:72px;mask-image:linear-gradient(transparent 44px,#000 66px,#000 calc(100% - 40px),transparent)}
+ h1{font-size:46px}
+ .chapter h2,.crossroads h2,.teranga h2,.roots h2,.together h2{font-size:40px}
+ .eyebrow{margin-bottom:12px}
+ .body-copy{font-size:13px;line-height:1.6;margin-top:10px;max-width:48vw}
+ .journey-link{margin-top:14px}
+ .bottom-ui{bottom:calc(10px + env(safe-area-inset-bottom))}
+ .crossroads .chapter-content{display:flex;flex-direction:column}
+ .fork-arrows,.calm .fork-arrows{position:relative;left:auto;right:auto;bottom:auto;max-width:560px;align-items:stretch;gap:10px;margin:auto 0 62px;padding-top:12px}
+ .fork-arrow{flex:1 1 0;min-width:0;gap:10px;padding:8px 12px;font-size:14px;line-height:1.25;background:#0f2a1fcc;border:1px solid #e8bd6f44}
+ .fork-arrow.right{justify-content:flex-end}
+ .fork-circle{width:36px;height:36px;font-size:16px}
+ .fork-arrow small{font-size:9.5px;margin-bottom:3px}
+ .fork-arrow em{font-size:11px;margin-top:3px}
+ .branch-topbar{padding-top:max(10px,env(safe-area-inset-top));padding-bottom:10px}
+ .branch-stop{padding-bottom:7svh}
+ .branch-card{width:min(330px,40vw);padding:14px 16px}
+ .branch-card figcaption,.branch-card p{font-size:13px}
+ .branch-card.finale{width:min(600px,72vw);padding:10px 14px}
+ .branch-card.finale h3{font-size:22px;margin:4px 0}
+ .branch-actions a,.branch-actions button{min-height:36px;padding:7px 10px;margin-top:6px;font-size:11px}
+ .branch-card.finale .path-action{margin:8px auto 2px;font-size:15px}
+}

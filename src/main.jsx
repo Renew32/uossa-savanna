@@ -180,11 +180,13 @@ function App() {
     window.addEventListener('popstate',sync); window.addEventListener('hashchange',sync);
     return () => {window.removeEventListener('popstate',sync);window.removeEventListener('hashchange',sync)};
   }, []);
+  // A phone, held upright or sideways: narrow screen, or a short touch screen.
+  const PHONE = "(max-width: 760px), (max-height: 500px) and (pointer: coarse)";
   const [isMobile, setIsMobile] = useState(
-    () => matchMedia("(max-width: 760px)").matches,
+    () => matchMedia(PHONE).matches,
   );
   useEffect(() => {
-    const mq = matchMedia("(max-width: 760px)");
+    const mq = matchMedia(PHONE);
     const update = () => setIsMobile(mq.matches);
     mq.addEventListener("change", update);
     return () => mq.removeEventListener("change", update);

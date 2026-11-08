@@ -317,13 +317,15 @@ vec3 clay=mix(vec3(.42,.255,.12),vec3(.67,.445,.25),grain*.5+coarse*.25);clay-=(
   // a wide screen, centred above it on a phone held upright).
   const sides={};
   function computeStops(){
-    const portrait=mobile&&innerWidth<innerHeight, near=portrait?10.5:7.5, f=portrait?0:.32, fy=portrait?.2:.05;
+    // A phone held sideways sees the boards closer, so they are not dwarfed by the cards.
+    const portrait=mobile&&innerWidth<innerHeight, sideways=mobile&&!portrait&&innerHeight<500;
+    const near=portrait?10.5:sideways?6:7.5, f=portrait?0:sideways?.3:.32, fy=portrait?.2:sideways?.12:.05;
     for(const [name,path] of paths){
       const stops=[{s:0}];
       for(const b of boards.filter(b=>b.name===name&&!b.finale))stops.push({s:Math.max(.5,b.s-near+(b.side>0?-.5:.5)),target:b.center,f:b.side>0?-f:f,fy});
-      const fin=boards.find(b=>b.name===name&&b.finale),sF=path.finale.s-(name==='bureau'?(portrait?17.5:12):(portrait?16:11.5));
+      const fin=boards.find(b=>b.name===name&&b.finale),sF=path.finale.s-(name==='bureau'?(portrait?17.5:sideways?13.5:12):(portrait?16:sideways?13:11.5));
       // The final caption card is taller, so the last board sits higher on screen.
-      stops.push({s:sF,target:fin.center,f:0,fy:portrait?.44:.2});
+      stops.push({s:sF,target:fin.center,f:0,fy:portrait?.44:sideways?.5:.2});
       for(let k=1;k<=EXIT_SCREENS;k++)stops.push({s:sF+(path.L-sF)*k/EXIT_SCREENS});
       sides[name]={path,stops};
     }
