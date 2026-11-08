@@ -1299,3 +1299,46 @@ html[data-chapter="5"] .shade{background-color:#06170b44}
  .lightbox-navigation{padding-top:10px}
  .board-lightbox .gallery-credit{margin:8px 0 0;font-size:11px;text-align:center}
 }
+
+/* ── Touch comfort ── */
+/* No 300 ms double-tap delay on links and buttons. */
+a,button{touch-action:manipulation}
+/* On touch screens a hover effect would stay stuck after the tap: give a short press feedback instead. */
+@media(hover:none){
+ .fork-arrow.left:hover .fork-circle,.fork-arrow.right:hover .fork-circle,.fork-arrow.straight:hover .fork-circle{transform:none;background:#0f2a1fcc}
+ .route-fork a:hover{transform:none;background:#112c22db}
+ .branch-card button:hover,.branch-actions a:hover{background:#173c2d}
+ .route-back:hover,.routes-panel a:hover{background:transparent}
+ .header-link:hover{background:none;border-color:#e6d5b24d}
+ .motion-button:hover,.instagram-link:hover{border-color:#d8c39530;color:inherit}
+}
+.fork-arrow:active,.route-fork a:active,.branch-card button:active,.branch-actions a:active,.path-action:active,.route-back:active,
+.motion-button:active,.instagram-link:active,.header-link:active,.routes-panel a:active,.board-lightbox button:active,.journey-link:active{transform:scale(.97);filter:brightness(1.15)}
+.fork-arrow,.route-fork a,.branch-card button,.branch-actions a,.motion-button,.instagram-link,.header-link,.board-lightbox button{transition:transform .12s,filter .12s,background .25s}
+
+/* ── Phones: legible small labels and 44 px touch targets ── */
+@media(max-width:760px){
+ .eyebrow,.hero .eyebrow{font-size:11px;letter-spacing:1.6px}
+ .journey-link small,.chapter-caption,.motion-button,.branch-count,.branch-hint,.exit-hint small,.branch-topbar>span,.identity span{font-size:11px}
+ .hero-bottom,.cities small,footer,.values{font-size:10px}
+ .fork-label,.path-action small{font-size:10.5px}
+ .route-fork a>span{font-size:10px}
+ .brand small{font-size:8.5px}
+ .header-link{font-size:12px;min-height:44px}
+ .fork-arrow small{font-size:9.5px}
+ .fork-arrow em{font-size:11px}
+ .motion-button{min-height:44px;padding:8px 14px}
+ .instagram-link{min-width:44px;min-height:44px;justify-content:center}
+ .route-back{min-height:44px}
+ .branch-card button,.branch-actions a,.branch-actions button{min-height:44px}
+ .routes-panel a{min-height:44px;align-items:center}
+ .board-lightbox button{min-height:44px}
+ .brand,.journey-link{min-height:44px}
+}
+
+/* ── Notches and the home indicator (viewport-fit=cover) ── */
+.header{padding-top:max(30px,env(safe-area-inset-top));padding-left:max(var(--pad),env(safe-area-inset-left));padding-right:max(var(--pad),env(safe-area-inset-right))}
+.bottom-ui{bottom:calc(22px + env(safe-area-inset-bottom));left:max(var(--pad),env(safe-area-inset-left));right:max(var(--pad),env(safe-area-inset-right))}
+.branch-topbar{padding-top:max(22px,env(safe-area-inset-top));padding-left:max(var(--pad),env(safe-area-inset-left));padding-right:max(var(--pad),env(safe-area-inset-right))}
+@media(max-width:1000px){.header{padding-top:max(24px,env(safe-area-inset-top))}}
+@media(max-width:760px){.header{padding-top:max(22px,env(safe-area-inset-top))}.bottom-ui{bottom:calc(19px + env(safe-area-inset-bottom))}}
