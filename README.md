@@ -35,7 +35,7 @@ cd /tmp/uossa-pages && git init -q -b gh-pages && git add -A && git commit -qm "
 
 Défiler pour avancer sur la route ; utiliser les liens pour changer de chapitre. Le curseur influence légèrement la caméra et le vent. Le bouton « Animation réduite » fige la caméra et les effets. La préférence système de réduction des mouvements est également respectée. Navigation clavier et lien d’évitement inclus. Instagram reste disponible en bas à droite.
 
-Deux carrefours jalonnent la route. Au premier (« Le carrefour »), la flèche gauche prend la route du bureau exécutif : trois planches de portraits au bord du chemin (à gauche, à droite, à gauche), puis la photo de groupe au bout, au milieu de la route. Au second (« Votre place »), la flèche droite prend la route de l’inscription et du recensement, qui se termine devant le panneau du formulaire. Chaque route annexe se défile comme le parcours principal ; au bout, elle revient rejoindre la route principale (avant « Nos racines » pour le bureau, avant « Ensemble » pour l’inscription). « Retour au carrefour » ou Échap ramène la caméra au carrefour. Le menu « Les chemins », en haut à droite, liste les routes annexes (« Le bureau exécutif », « Inscription & recensement »), puis « Rejoindre » ; il se construit à partir de `SIDES` dans `src/main.jsx` : une nouvelle route annexe y apparaît dès qu’elle y est déclarée. Les liens #bureau et #inscription y conduisent aussi directement.
+Deux carrefours jalonnent la route. Au premier (« Le carrefour »), la flèche gauche prend la route du bureau exécutif : trois planches de portraits au bord du chemin (à gauche, à droite, à gauche), puis la photo de groupe au bout, au milieu de la route. Au second (« Votre place »), la flèche droite prend la route de l’inscription et du recensement, qui se termine devant le panneau du formulaire. Chaque route annexe se défile comme le parcours principal ; au bout, elle revient rejoindre la route principale (avant « Nos racines » pour le bureau, avant « Ensemble » pour l’inscription). « Retour au carrefour » ou Échap ramène la caméra au carrefour. Le menu « Les chemins », en haut à droite, liste les routes annexes (« Le bureau exécutif », « Inscription & recensement »), puis « Rejoindre » ; il se construit à partir de `SIDES` dans `src/content.js`. Pour ajouter un chapitre, allonger la route ou créer une route annexe : **[docs/GUIDE-CHEMINS.md](docs/GUIDE-CHEMINS.md)**. Les liens #bureau et #inscription y conduisent aussi directement.
 
 ## Téléphone
 
@@ -56,6 +56,7 @@ Deux carrefours jalonnent la route. Au premier (« Le carrefour »), la flèche 
 
 ## Fichiers clés
 
+- `src/content.js` : chapitres, routes annexes, photos et liens (le contenu à modifier en premier).
 - `src/route.js` : tracé commun aux routes (principale et annexes), à la caméra et au dégagement du terrain.
 - `src/scene.js` : environnement et rendu 3D.
 - `src/main.jsx` : contenu, navigation et animations.
