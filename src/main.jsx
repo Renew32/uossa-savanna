@@ -8,24 +8,20 @@ import "lenis/dist/lenis.css";
 // the text of the page can paint without waiting for the largest script.
 const sceneModule = import("./scene.js");
 import { START_Z, END_Z, TRAVEL, FORK_Z, JOIN_Z, SIDE_PATHS, SIDE_SCREENS, EXIT_SCREENS } from "./route.js";
+import { LOGO, INSTAGRAM, MEMBERSHIP_FORM, CHAPTERS, chapterIds, chapterIndex, BUREAU_PHOTOS, SIDES, SIDE_ROADS } from "./content.js";
 import "./style.css";
-// Public files, under the site's base path ("/" locally, "/uossa-savanna/" on GitHub Pages).
-const asset = (path) => import.meta.env.BASE_URL + path;
+// Chapters, side roads, photos and links are in content.js; the shape of the roads in route.js.
+// Guide (in French): docs/GUIDE-CHEMINS.md.
 // Each ↗ in this file is followed by an invisible U+FE0E (text presentation selector):
 // without it, iOS draws the arrow as a blue emoji.
 
 gsap.registerPlugin(ScrollTrigger);
-const chapters = ["L’esprit", "La téranga", "Le carrefour", "Nos racines", "Votre place", "Ensemble"];
-const chapterIds = ["esprit", "teranga", "carrefour", "racines", "votre-place", "ensemble"];
-// Side roads: the crossroads they leave from, the chapter where they rejoin the main road,
-// and their name and arrow in the header menu.
-const SIDES = {
-  bureau: { fork: "carrefour", join: "racines", label: "Le bureau exécutif", arrow: "←" },
-  inscription: { fork: "votre-place", join: "ensemble", label: "Inscription & recensement", arrow: "→" },
-};
+const chapters = CHAPTERS.map((c) => c.label);
+const twoDigits = (n) => String(n).padStart(2, "0");
+// Every side road must have its shape in route.js.
+for (const name of Object.keys(SIDES)) if (!SIDE_PATHS[name]) console.error(`Route annexe « ${name} » : ajouter son tracé dans SIDE_PATHS (src/route.js).`);
 // The header menu « Les chemins »: every side road, in the order of the journey, then « Rejoindre ».
 // A new side road only needs its entry in SIDES to appear in the menu.
-const SIDE_ROADS = Object.keys(SIDES).sort((a, b) => chapterIds.indexOf(SIDES[a].fork) - chapterIds.indexOf(SIDES[b].fork));
 function RoutesMenu({ openRoute }) {
   const [open, setOpen] = useState(false);
   const box = useRef(null), toggle = useRef(null);
@@ -59,9 +55,19 @@ function RoutesMenu({ openRoute }) {
     </div>
   );
 }
-const sideFromHash = () => (location.hash === "#bureau" || location.hash === "#inscription" ? location.hash.slice(1) : null);
-const INSTAGRAM = "https://www.instagram.com/uossa.aesuo/";
-const MEMBERSHIP_FORM = "https://docs.google.com/forms/d/e/1FAIpQLSdVQuKM8SwVUPYUUSURm9zUutTQMpb09Y5CgUI9p-yBa1WDDg/viewform?pli=1";
+// The side road named in the address (#bureau, #inscription…), if any.
+const sideFromHash = () => { const name = location.hash.slice(1); return Object.hasOwn(SIDES, name) ? name : null; };
+// The cards « Deux autres chemins à explorer » (home page on a large screen, and « Ensemble »).
+function OtherRoads({ openRoute }) {
+  return (
+    <nav className="route-fork" aria-label="Choisir un parcours">
+      <span className="fork-label">DEUX AUTRES CHEMINS À EXPLORER</span>
+      {SIDE_ROADS.map((name, i) => (
+        <a key={name} href={`#${name}`} onClick={(e) => openRoute(e, name)}><span>{twoDigits(i + 1)} / {SIDES[name].tagline}</span>{SIDES[name].label} <b aria-hidden="true">↗︎</b></a>
+      ))}
+    </nav>
+  );
+}
 const Star = () => (
   <svg viewBox="0 0 40 40" aria-hidden="true">
     <path
@@ -83,12 +89,7 @@ function Kinetic({ text, italic = false }) {
     </span>
   );
 }
-const boardImages = [
-  {src:asset('bureau-2026-2027.webp'),alt:'Photo de groupe de l’équipe UOSSA 2026–2027'},
-  {src:asset('bureau/02.webp'),alt:'Planche de portraits : coprésidence, président sortant et marketing'},
-  {src:asset('bureau/03.webp'),alt:'Planche de portraits : vie interne, finances, événementiel et bénévoles'},
-  {src:asset('bureau/04.webp'),alt:'Planche de portraits : projets, mentorat et équipe événementielle'},
-];
+const boardImages = BUREAU_PHOTOS;
 // Order along the bureau road: three boards beside the road, then the group photo as the finale.
 const branchOrder = [1, 2, 3, 0];
 const branchTotal = String(branchOrder.length).padStart(2, '0');
@@ -159,8 +160,8 @@ function SideLayer({ id, open, layerRef, onScroll, onBack, label, destination, c
 function App() {
   const canvas = useRef(null), navigate = useRef(null), smoothScroll = useRef(null), scrollApi = useRef(null);
   const stateRef = useRef(null), calmRef = useRef(false), sideOpen = useRef(null), exiting = useRef(false), firstRun = useRef(true), exitForward = useRef(null);
-  const bureauLayer = useRef(null), inscriptionLayer = useRef(null);
-  const layers = { bureau: bureauLayer, inscription: inscriptionLayer };
+  // One scroll layer per side road (see <SideLayer> below).
+  const layers = useRef(Object.fromEntries(Object.keys(SIDES).map((name) => [name, React.createRef()]))).current;
   const [photo, setPhoto] = useState(null);
   const [route, setRoute] = useState(sideFromHash);
   const [layer, setLayer] = useState(null);
@@ -250,10 +251,16 @@ function App() {
     const getAnchors = () => {
       if (anchors) return anchors;
       const end = Math.max(1, document.documentElement.scrollHeight - innerHeight);
-      const [a1, b1] = holdRange("bureau"), [a2, b2] = holdRange("inscription");
-      // The camera waits a few metres before each fork so the split is in view ahead.
-      const list = [[a1, FORK_Z.bureau + 6], [b1, FORK_Z.bureau + 6], [topOf("racines") + innerHeight * 0.1, JOIN_Z.bureau - 6],
-        [a2, FORK_Z.inscription + 6], [b2, FORK_Z.inscription + 6], [end, END_Z]];
+      // For each side road, in the order of the journey: the camera waits a few metres before the
+      // fork (so the split is in view ahead) while its crossroads is on screen, then passes the
+      // point where the road merges back just as its « join » chapter arrives.
+      const list = [];
+      for (const side of SIDE_ROADS) {
+        const [a, b] = holdRange(side);
+        list.push([a, FORK_Z[side] + 6], [b, FORK_Z[side] + 6]);
+        if (chapterIndex(SIDES[side].join) < chapterIds.length - 1) list.push([topOf(SIDES[side].join) + innerHeight * 0.1, JOIN_Z[side] - 6]);
+      }
+      list.push([end, END_Z]);
       anchors = [[0, START_Z]];
       for (const a of list) if (a[0] > anchors[anchors.length - 1][0] + 1) anchors.push(a);
       return anchors;
@@ -493,7 +500,9 @@ function App() {
     if (st && st.side.route === side && !exiting.current)
       st.side.target = el.scrollTop / Math.max(1, el.scrollHeight - el.clientHeight) * (SIDE_SCREENS[side] - 1);
   };
-  const jump = (event, index) => {
+  // Go to a chapter of the main road, by its id ("racines") or its position (0 = first).
+  const jump = (event, to) => {
+    const index = typeof to === "string" ? chapterIndex(to) : to;
     event.preventDefault();
     navigate.current?.(index);
     if (event.detail === 0)
@@ -523,7 +532,7 @@ function App() {
         <a
           href="#esprit"
           className="brand"
-          onClick={(e) => jump(e, 0)}
+          onClick={(e) => jump(e, "esprit")}
           aria-label="UOSSA AESUO, accueil"
         >
           <Star />
@@ -533,10 +542,10 @@ function App() {
           </span>
         </a>
         <nav className="top-nav" aria-label="Navigation principale">
-          <a href="#teranga" onClick={(e) => jump(e, 1)}>
+          <a href="#teranga" onClick={(e) => jump(e, "teranga")}>
             Notre esprit
           </a>
-          <a href="#racines" onClick={(e) => jump(e, 3)}>
+          <a href="#racines" onClick={(e) => jump(e, "racines")}>
             Nos racines
           </a>
           <a href="#bureau" onClick={(e) => openRoute(e, "bureau")}>Le bureau</a>
@@ -557,7 +566,7 @@ function App() {
             aria-label={`${i + 1}. ${label}`}
             aria-current={chapter === i ? "step" : undefined}
           >
-            <span>0{i + 1}</span>
+            <span>{twoDigits(i + 1)}</span>
             <i />
           </a>
         ))}
@@ -590,7 +599,7 @@ function App() {
             <a
               className="journey-link reveal"
               href="#teranga"
-              onClick={(e) => jump(e, 1)}
+              onClick={(e) => jump(e, "teranga")}
             >
               <span className="circle-arrow">↓</span>
               <span>
@@ -601,14 +610,10 @@ function App() {
           </div>
           <img
             className="hero-emblem-fallback"
-            src={asset("uossa-logo-2026.jpg")}
+            src={LOGO}
             alt="Emblème UOSSA Sénégal"
           />
-          <div className="hero-paths"><nav className="route-fork" aria-label="Choisir un parcours">
-              <span className="fork-label">DEUX AUTRES CHEMINS À EXPLORER</span>
-              <a href="#bureau" onClick={(e) => openRoute(e,"bureau")}><span>01 / RENCONTRER</span>Le bureau exécutif <b aria-hidden="true">↗︎</b></a>
-              <a href="#inscription" onClick={(e) => openRoute(e,"inscription")}><span>02 / REJOINDRE</span>Inscription & recensement <b aria-hidden="true">↗︎</b></a>
-            </nav></div>
+          <div className="hero-paths"><OtherRoads openRoute={openRoute} /></div>
           <div className="hero-side reveal">
             <span>LES LIONS DE LA TÉRANGA</span>
             <p>
@@ -683,7 +688,7 @@ function App() {
                 <span className="fork-circle" aria-hidden="true">←</span>
                 <span><small>À GAUCHE</small>Le bureau exécutif<em>Rencontrer l’équipe <span className="nowrap">2026–2027</span></em></span>
               </button>
-              <button className="fork-arrow right" onClick={(e) => jump(e, 3)}>
+              <button className="fork-arrow right" onClick={(e) => jump(e, "racines")}>
                 <span><small>À DROITE</small>Continuer la route<em>Nos racines</em></span>
                 <span className="fork-circle" aria-hidden="true">→</span>
               </button>
@@ -742,7 +747,7 @@ function App() {
               Inscription et recensement des membres 2026–2027. Rejoignez l’UOSSA, partagez vos envies et faites-nous connaître vos idées pour l’année.
             </p>
             <div className="fork-arrows" role="group" aria-label="Choisir un chemin">
-              <button className="fork-arrow left straight" onClick={(e) => jump(e, 5)}>
+              <button className="fork-arrow left straight" onClick={(e) => jump(e, "ensemble")}>
                 <span className="fork-circle" aria-hidden="true">↑</span>
                 <span><small>TOUT DROIT</small>Continuer la route<em>Ensemble</em></span>
               </button>
@@ -772,47 +777,28 @@ function App() {
               <br />
               Bienvenue chez les Lions de la Téranga.
             </p>
-            <nav className="route-fork" aria-label="Choisir un parcours">
-              <span className="fork-label">DEUX AUTRES CHEMINS À EXPLORER</span>
-              <a href="#bureau" onClick={(e) => openRoute(e,"bureau")}><span>01 / RENCONTRER</span>Le bureau exécutif <b aria-hidden="true">↗︎</b></a>
-              <a href="#inscription" onClick={(e) => openRoute(e,"inscription")}><span>02 / REJOINDRE</span>Inscription & recensement <b aria-hidden="true">↗︎</b></a>
-            </nav>
-            <div className="identity reveal">
-              <img
-                src={asset("uossa-logo-2026.jpg")}
-                alt="Logo original UOSSA Sénégal : lion doré, étoile verte et couleurs sénégalaises"
-                width="72"
-                height="72"
-              />
-              <div>
-                <strong>UOSSA · AESUO</strong>
-                <span>
-                  University of Ottawa
-                  <br />
-                  Senegalese Student Association
-                </span>
-              </div>
-            </div>
+            <OtherRoads openRoute={openRoute} />
             <a
               href="#esprit"
               className="return-link reveal"
-              onClick={(e) => jump(e, 0)}
+              onClick={(e) => jump(e, "esprit")}
             >
               Revivre le voyage <span>↗︎</span>
             </a>
+            {/* Closes the column: always below the content, never under it. */}
+            <footer>
+              <span>LE SÉNÉGAL AU CŒUR. OTTAWA À L’HORIZON.</span>
+              <span className="footer-flag">
+                <i />
+                <i />
+                <i />
+              </span>
+              <span>UOSSA · AESUO</span>
+            </footer>
           </div>
-          <footer>
-            <span>LE SÉNÉGAL AU CŒUR. OTTAWA À L’HORIZON.</span>
-            <span className="footer-flag">
-              <i />
-              <i />
-              <i />
-            </span>
-            <span>UOSSA · AESUO</span>
-          </footer>
         </section>
       </main>
-      <SideLayer id="bureau" open={layer === 'bureau'} layerRef={bureauLayer} onScroll={onLayerScroll('bureau')} onBack={closeRoute}
+      <SideLayer id="bureau" open={layer === 'bureau'} layerRef={layers.bureau} onScroll={onLayerScroll('bureau')} onBack={closeRoute}
         label="UOSSA · AESUO / LE BUREAU EXÉCUTIF 2026–2027" destination="Nos racines">
         <section className="branch-stop branch-intro">
           <div className="branch-card intro">
@@ -848,7 +834,7 @@ function App() {
           </div>
         </section>
       </SideLayer>
-      <SideLayer id="inscription" open={layer === 'inscription'} layerRef={inscriptionLayer} onScroll={onLayerScroll('inscription')} onBack={closeRoute}
+      <SideLayer id="inscription" open={layer === 'inscription'} layerRef={layers.inscription} onScroll={onLayerScroll('inscription')} onBack={closeRoute}
         label="UOSSA · AESUO / DEVENIR MEMBRE" destination="Ensemble">
         <section className="branch-stop branch-intro">
           <div className="branch-card intro">
@@ -873,7 +859,7 @@ function App() {
       <BoardLightbox selected={photo} setSelected={setPhoto} />
       <div className="bottom-ui">
         <span className="chapter-caption">
-          0{chapter + 1} <i /> {chapters[chapter]}
+          {twoDigits(chapter + 1)} <i /> {chapters[chapter]}
         </span>
         <div className="bottom-actions">
         <button

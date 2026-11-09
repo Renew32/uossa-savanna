@@ -3,12 +3,14 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { START_Z, TRAVEL, END_Z, ROAD_HALF_WIDTH, roadX, roadSlope, roadHeight, terrainHeight, roadDistance, SIDE_PATHS, EXIT_SCREENS } from './route.js';
-// Public files, under the site's base path ("/" locally, "/uossa-savanna/" on GitHub Pages).
-const asset = (path) => import.meta.env.BASE_URL + path;
+import { asset, LOGO, SIDES } from './content.js';
 
-// Executive-board photos along the bureau road (same order as the HTML captions), then the group photo.
-export const BUREAU_IMAGES = [asset('bureau/02.webp'),asset('bureau/03.webp'),asset('bureau/04.webp')];
-const GROUP_PHOTO = asset('bureau-2026-2027.webp'), LOGO = asset('uossa-logo-2026.jpg');
+// The final board of a side road: a photo is shown larger than a painted sign. `distance` is how
+// far before it the camera stops (phone upright, phone sideways, larger screens).
+const FINALE_LOOK = {
+  photo: { width: 7.2, post: 1.35, distance: { portrait: 17.5, sideways: 13.5, wide: 12 } },
+  sign: { width: 6.4, post: 1.3, distance: { portrait: 16, sideways: 13, wide: 11.5 } },
+};
 
 export function createSavanna(canvas, state, { mobile, calm, onReady }) {
   let renderer;
@@ -112,11 +114,11 @@ vec3 clay=mix(vec3(.42,.255,.12),vec3(.67,.445,.25),grain*.5+coarse*.25);clay-=(
   for(const [name,path] of paths){
     path.boards.forEach((b,i)=>{
       const a=path.at(b.s,{}),x=a.x+a.dz*lateral*b.side,z=a.z-a.dx*lateral*b.side,face=path.at(b.s-9,{}),eye=path.at(b.s-11,{});
-      boards.push({name,x,z,width:4.4,post:1.15,faceX:face.x,faceZ:face.z,src:BUREAU_IMAGES[i],s:b.s,side:b.side});
+      boards.push({name,x,z,width:4.4,post:1.15,faceX:face.x,faceZ:face.z,src:SIDES[name].boards[i].src,s:b.s,side:b.side});
       cones.push({ax:eye.x,az:eye.z,bx:x,bz:z,r:2.9});
     });
-    const f=path.finale,width=name==='bureau'?7.2:6.4;
-    boards.push({name,finale:true,x:f.x,z:f.z,width,post:name==='bureau'?1.35:1.3,faceX:f.x-f.dx*10,faceZ:f.z-f.dz*10,src:name==='bureau'?GROUP_PHOTO:null});
+    const f=path.finale,end=SIDES[name].finale,look=end.photo?FINALE_LOOK.photo:FINALE_LOOK.sign,width=look.width;
+    boards.push({name,finale:true,look,x:f.x,z:f.z,width,post:look.post,faceX:f.x-f.dx*10,faceZ:f.z-f.dz*10,src:end.photo||null,sign:end.sign});
     cones.push({ax:f.x-f.dx*19,az:f.z-f.dz*19,bx:f.x,bz:f.z,r:width/2+.8});
   }
   // Signposts stand in the wedge between the main road and each side road, facing the crossroads.
@@ -271,15 +273,15 @@ vec3 clay=mix(vec3(.42,.255,.12),vec3(.67,.445,.25),grain*.5+coarse*.25);clay-=(
     const paint=()=>{if(stopped)return;g.clearRect(0,0,width,height);draw(g);t.needsUpdate=true;needsRender=true;};
     paint();document.fonts?.ready.then(paint);return {texture:t,paint};
   }
-  // The inscription road ends at a sign rather than a photo: logo and title on the board.
-  function inscriptionSign(){
+  // A road can end at a painted sign rather than a photo: logo, title, subtitle and year.
+  function paintedSign({title,subtitle,year}){
     const logoImage=new Image();
     const sign=canvasTexture(1024,576,g=>{
       g.fillStyle='#173b29';g.fillRect(0,0,1024,576);g.strokeStyle='#d9ae4f';g.lineWidth=10;g.strokeRect(26,26,972,524);
       if(logoImage.complete&&logoImage.naturalWidth){const h=400,w=h*logoImage.naturalWidth/logoImage.naturalHeight;g.drawImage(logoImage,70,88,w,h);}
       g.textAlign='left';g.textBaseline='alphabetic';g.fillStyle='#f6ead0';g.font='700 92px Barlow, "Arial Narrow", sans-serif';
-      g.fillText('INSCRIPTION',420,236);g.font='700 64px Barlow, "Arial Narrow", sans-serif';g.fillText('& RECENSEMENT',420,318);
-      g.fillStyle='#e8bd6f';g.font='italic 500 76px Cormorant, Georgia, serif';g.fillText('2026–2027',420,418);
+      g.fillText(title,420,236);g.font='700 64px Barlow, "Arial Narrow", sans-serif';g.fillText(subtitle,420,318);
+      g.fillStyle='#e8bd6f';g.font='italic 500 76px Cormorant, Georgia, serif';g.fillText(year,420,418);
     });
     logoImage.onload=sign.paint;logoImage.src=LOGO;return sign.texture;
   }
@@ -289,12 +291,11 @@ vec3 clay=mix(vec3(.42,.255,.12),vec3(.67,.445,.25),grain*.5+coarse*.25);clay-=(
     // The gold rim shows only around the front of the photo; from behind the board is plain green.
     rimParts.push(placed(new THREE.BoxGeometry(b.width+.12,height+.12,.1),base,0,cy,.02));
     for(const sx of [-1,1])woodParts.push(placed(new THREE.CylinderGeometry(.06,.075,b.post+.25,8),base,sx*b.width*.36,(b.post+.25)/2-.12,-.02));
-    const photo=add(new THREE.Mesh(new THREE.PlaneGeometry(b.width,height),new THREE.MeshBasicMaterial({map:b.src?photoTexture(b.src):inscriptionSign(),toneMapped:false})));
+    const photo=add(new THREE.Mesh(new THREE.PlaneGeometry(b.width,height),new THREE.MeshBasicMaterial({map:b.src?photoTexture(b.src):paintedSign(b.sign),toneMapped:false})));
     photo.applyMatrix4(base);photo.position.add(new THREE.Vector3(0,cy,.08).applyQuaternion(photo.quaternion));farProps.push(photo);
     b.center=new THREE.Vector3(b.x,y+cy,b.z);
   }
   // Two arrows per signpost, painted on one canvas so each post is a single textured plane.
-  const signLabels={bureau:['LE BUREAU','LA ROUTE'],inscription:['LA ROUTE','INSCRIPTION']};
   function arrowSign(g,ox,oy,text,pointLeft){
     g.save();g.translate(ox,oy);g.beginPath();
     if(pointLeft){g.moveTo(8,75);g.lineTo(80,8);g.lineTo(632,8);g.lineTo(632,142);g.lineTo(80,142);}
@@ -306,7 +307,7 @@ vec3 clay=mix(vec3(.42,.255,.12),vec3(.67,.445,.25),grain*.5+coarse*.25);clay-=(
   for(const p of posts){
     const y=terrainHeight(p.x,p.z),base=baseMatrix(p.x,y,p.z,p.faceX,p.faceZ);
     woodParts.push(placed(new THREE.CylinderGeometry(.07,.09,3.1,10),base,0,1.55,0));
-    const [top,bottom]=signLabels[p.name];
+    const {left:top,right:bottom}=SIDES[p.name].signpost;
     const {texture:map}=canvasTexture(1044,370,g=>{arrowSign(g,0,0,top,true);arrowSign(g,402,219,bottom,false);});
     const plate=add(new THREE.Mesh(new THREE.PlaneGeometry(2.85,1.01),new THREE.MeshStandardMaterial({map,transparent:true,alphaTest:.5,side:THREE.DoubleSide,roughness:.8})));
     plate.applyMatrix4(base);plate.position.add(new THREE.Vector3(0,2.25,.1).applyQuaternion(plate.quaternion));farProps.push(plate);
@@ -324,9 +325,9 @@ vec3 clay=mix(vec3(.42,.255,.12),vec3(.67,.445,.25),grain*.5+coarse*.25);clay-=(
     for(const [name,path] of paths){
       const stops=[{s:0}];
       for(const b of boards.filter(b=>b.name===name&&!b.finale))stops.push({s:Math.max(.5,b.s-near+(b.side>0?-.5:.5)),target:b.center,f:b.side>0?-f:f,fy});
-      const fin=boards.find(b=>b.name===name&&b.finale),sF=path.finale.s-(name==='bureau'?(portrait?17.5:sideways?13.5:12):(portrait?16:sideways?13:11.5));
+      const fin=boards.find(b=>b.name===name&&b.finale),d=fin.look.distance,sF=path.finale.s-(portrait?d.portrait:sideways?d.sideways:d.wide);
       // The final caption card is taller, so the last board sits higher on screen.
-      stops.push({s:sF,target:fin.center,f:0,fy:portrait?.44:sideways?.5:.2});
+      stops.push({s:sF,target:fin.center,f:0,fy:portrait?.44:sideways?.5:.27});
       for(let k=1;k<=EXIT_SCREENS;k++)stops.push({s:sF+(path.L-sF)*k/EXIT_SCREENS});
       sides[name]={path,stops};
     }

@@ -484,12 +484,21 @@ h2 {
   transform: translate(-50%, -50%);
   color: var(--gold);
 }
+/* ── Ensemble (last chapter): one column from the title down to the footer. The footer closes
+   the column and the bottom padding keeps it above the fixed bottom bar, so nothing overlaps
+   at any screen size; when the screen is too short, the column grows and scrolls instead. ── */
 .together {
   min-height: 110svh;
   text-align: center;
 }
 .together .chapter-content {
-  padding-top: 24svh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: auto;
+  min-height: 100svh;
+  padding-top: clamp(120px, 20svh, 24svh);
+  padding-bottom: calc(96px + env(safe-area-inset-bottom));
 }
 .together .eyebrow {
   justify-content: center;
@@ -498,35 +507,62 @@ h2 {
   width: 20px;
 }
 .together h2 {
-  font-size: clamp(60px, 7.5vw, 120px);
+  font-size: clamp(44px, min(7.5vw, 11.5svh), 120px);
 }
 .together .body-copy {
   max-width: none;
 }
-.identity {
-  margin-top: 30px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 16px;
-  text-align: left;
+.together .route-fork {
+  grid-template-columns: 1fr 1fr;
+  max-width: 760px;
+  margin: 24px auto 0;
 }
-.identity img {
-  width: 55px;
-  height: 55px;
-  border-radius: 50%;
-  object-fit: cover;
+.together .fork-label {
+  grid-column: 1 / -1;
 }
-.identity strong {
-  font-size: 12px;
-  letter-spacing: 1.6px;
+@media (max-width: 760px) {
+  .chapter.together {
+    padding-right: var(--pad);
+  }
+  .together .chapter-content {
+    padding-top: max(112px, 22svh);
+  }
+  .together h2 {
+    font-size: 10.8vw;
+  }
+  .together .body-copy {
+    max-width: 100%;
+    font-size: 14px;
+  }
+  .together .route-fork {
+    grid-template-columns: 1fr;
+    max-width: 480px;
+    margin-top: 20px;
+  }
 }
-.identity span {
-  display: block;
-  font-size: 10px;
-  line-height: 1.65;
-  color: #c1c9b8;
-  margin-top: 5px;
+/* Shorter screens: a tighter column, so it still fits between the header and the bottom bar. */
+@media (max-width: 760px) and (max-height: 740px), (min-width: 761px) and (max-height: 700px) {
+  .together .chapter-content {
+    padding-top: 96px;
+    padding-bottom: calc(84px + env(safe-area-inset-bottom));
+    mask-image: linear-gradient(transparent 56px, #000 88px, #000 calc(100% - 60px), transparent);
+  }
+  .together .body-copy {
+    margin-top: 12px;
+    line-height: 1.6;
+  }
+  .together .route-fork {
+    margin-top: 12px;
+    gap: 8px;
+  }
+  .together .route-fork a {
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+  .together .return-link {
+    margin-top: 4px;
+    padding: 10px 0;
+  }
 }
 .return-link {
   display: inline-flex;
@@ -545,10 +581,8 @@ h2 {
   color: var(--gold);
 }
 footer {
-  position: absolute;
-  bottom: 85px;
-  left: var(--pad);
-  right: var(--pad);
+  align-self: stretch;
+  margin-top: auto;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -699,9 +733,6 @@ footer {
   .hero-bottom {
     font-size: 8px;
   }
-  .together h2 {
-    font-size: 8vw;
-  }
 }
 @media (max-width: 760px) {
   :root {
@@ -837,29 +868,10 @@ footer {
   .cities small {
     font-size: 7px;
   }
-  .together {
-    min-height: 110svh;
-    padding-right: var(--pad);
-  }
-  .together .chapter-content {
-    padding-top: 28svh;
-  }
-  .together h2 {
-    font-size: 10.8vw;
-  }
-  .together .body-copy {
-    max-width: 100%;
-    font-size: 13px;
-  }
-  .together .identity {
-    margin-top: 23px;
-  }
   .return-link {
     margin-top: 12px;
   }
   footer {
-    bottom: 80px;
-    font-size: 7px;
     letter-spacing: 0.8px;
   }
   footer > span:first-child {
@@ -888,7 +900,7 @@ footer {
     padding-top: 32svh;
   }
 }
-@media (max-height: 670px) and (min-width: 761px) {
+@media (max-height: 720px) and (min-width: 761px) {
   .hero .chapter-content {
     padding-top: 23svh;
   }
@@ -911,22 +923,12 @@ footer {
   }
   h2,
   .teranga h2,
-  .roots h2,
-  .together h2 {
+  .roots h2 {
     font-size: 12svh;
   }
   .body-copy {
     margin-top: 18px;
     font-size: 13px;
-  }
-  .identity {
-    margin-top: 18px;
-  }
-  .together .chapter-content {
-    padding-top: 20svh;
-  }
-  footer {
-    bottom: 68px;
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -984,9 +986,6 @@ footer {
   .body-copy {
     font-size: 16px;
   }
-  .together .body-copy {
-    font-size: 14px;
-  }
   .intro {
     font-size: 14px;
   }
@@ -1010,13 +1009,6 @@ footer {
   .hero-bottom,
   .hero-side {
     display: none;
-  }
-  footer {
-    position: relative;
-    bottom: auto;
-    left: auto;
-    right: auto;
-    margin-bottom: 75px;
   }
   .together {
     display: block;
@@ -1082,51 +1074,21 @@ html[data-chapter='3'] .shade::after,html[data-chapter='5'] .shade::after{opacit
 .chapter h1,.chapter h2{text-shadow:0 3px 30px #06170c55}
 
 /* Two new stops on the continuous savanna journey. */
-.bureau,.inscription{min-height:150svh}
-.bureau-content{width:100%;display:grid;grid-template-columns: .9fr 1.1fr;gap:5vw;align-items:center;padding-right:8vw}
-.bureau h2,.inscription h2{font-size:clamp(46px,6vw,94px)}
-.bureau .body-copy,.inscription .body-copy{max-width:480px}
-.team-portrait{margin:0;perspective:1000px}
-.team-portrait img{display:block;width:100%;height:auto;border:1px solid #e6c88555;box-shadow:0 26px 70px #05140e80;transform:rotateY(-5deg);transition:transform .6s}
-.team-portrait a:hover img{transform:rotateY(0)}
-.team-portrait figcaption{font-size:10px;letter-spacing:.13em;padding-top:16px;line-height:1.8}
-.team-portrait figcaption span{display:block;opacity:.7;font-size:9px}
 .path-action{display:inline-grid;grid-template-columns:1fr auto;gap:8px 28px;margin-top:22px;padding:18px 24px;background:#173c2ddd;border:1px solid #d6b66a;color:var(--cream);text-decoration:none;font-size:18px;transition:background .25s,transform .25s}
 .path-action:hover{background:#28523d;transform:translateY(-3px)}
 .path-action small{grid-column:1/-1;font-size:9px;letter-spacing:.18em;color:var(--gold)}
-.next-path{display:block;width:fit-content;margin-top:23px;font-size:12px;text-decoration:none;border-bottom:1px solid #e8bd6f66;padding-bottom:7px}
-.form-note{font-size:12px;max-width:380px;line-height:1.7;margin-top:20px;opacity:.8}
 .bottom-actions{display:flex;align-items:center;gap:12px}
 .instagram-link{display:flex;align-items:center;gap:9px;min-height:40px;padding:8px 13px;border:1px solid #d8c39566;border-radius:30px;background:#142d22ed;text-decoration:none;font-size:11px}
 .instagram-link svg{width:18px;height:18px}
 .instagram-link:hover{border-color:var(--gold);color:var(--gold)}
 html[data-chapter="5"] .shade{background-color:#06170b44}
-@media(max-width:900px){.bureau-content{gap:24px}.top-nav{gap:16px}.bureau h2{font-size:52px}}
+@media(max-width:900px){.top-nav{gap:16px}}
 @media(max-width:760px){
- .bureau-content{display:flex;flex-direction:column;justify-content:center;align-items:stretch;gap:20px;padding:90px var(--pad) 90px}
- .bureau h2,.inscription h2{font-size:48px}.bureau .body-copy{font-size:13px;line-height:1.6;margin-top:14px}
- .bureau .team-portrait{width:100%;max-width:400px}.team-portrait figcaption{padding-top:6px;font-size:8px}.team-portrait figcaption span{font-size:8px}
- .bureau .path-action{font-size:14px;padding:12px 16px;margin-top:12px}.bureau .next-path{margin-top:12px;font-size:11px}
  .bottom-actions{gap:8px}.instagram-link{padding:8px 10px}.instagram-link span{display:none}.motion-button{padding:9px;font-size:9px}.chapter-caption{gap:6px;font-size:9px}.chapter-caption i{width:12px}
 }
-@media(max-height:680px) and (max-width:760px){.bureau .chapter-content{height:auto;min-height:100svh;position:relative}.bureau{min-height:110svh}.bureau h2{font-size:40px}}
-.calm .team-portrait img{transform:none;transition:none}
 
-/* Secondary routes: independent destinations, not extra scroll chapters. */
-.secondary-route{overflow:hidden}
-.route-dialog{position:fixed;inset:0;width:100%;max-width:none;height:100dvh;max-height:none;margin:0;border:0;padding:0;color:var(--cream);background:linear-gradient(115deg,#10271ef5,#14251ce8),url('/textures/safari-sunset.webp') center/cover;overflow-y:auto;overscroll-behavior:contain}
-.route-dialog::backdrop{background:#06120ce8;backdrop-filter:blur(10px)}
-.route-topbar{position:sticky;top:0;z-index:2;display:flex;justify-content:space-between;align-items:center;gap:20px;padding:24px var(--pad);background:#10271ef5;border-bottom:1px solid #e8bd6f22}
-.route-topbar>span{font-size:10px;letter-spacing:.16em;color:var(--gold)}
 .route-back{padding:12px 18px;border:1px solid #e8bd6f66;background:transparent;color:var(--cream);font:inherit;font-size:13px;cursor:pointer}
 .route-back:hover{background:#e8bd6f18}
-.route-dialog .branch-page{min-height:0;padding:0 var(--pad)}
-.route-dialog .chapter-content{position:relative;top:auto;height:auto;min-height:calc(100dvh - 160px);padding:50px 0;opacity:1;transform:none;width:100%;max-width:1250px;margin:auto}
-.route-dialog .inscription .chapter-content{display:flex;flex-direction:column;justify-content:center;align-items:flex-start;max-width:850px}
-.route-dialog .bureau-content{display:grid;grid-template-columns:1fr 1.1fr;gap:5vw}
-.route-dialog .letter,.route-dialog .reveal{opacity:1;transform:none}
-.route-dialog h2{font-size:clamp(50px,6vw,90px);margin:18px 0 24px}
-.route-instagram{display:block;text-align:right;padding:15px var(--pad) 25px;font-size:12px;color:var(--gold);text-decoration:none}
 .hero-paths{position:absolute;right:var(--pad);bottom:125px;width:min(340px,32vw);z-index:2}
 .hero-side{display:none}
 .route-fork{display:grid;gap:9px;max-width:480px;width:100%;margin:20px 0}
@@ -1135,42 +1097,33 @@ html[data-chapter="5"] .shade{background-color:#06170b44}
 .route-fork a:hover{transform:translateX(5px);background:#224a36}
 .route-fork a>span{display:block;font-size:8px;letter-spacing:.16em;color:var(--gold);margin-bottom:6px}
 .route-fork b{position:absolute;right:18px;top:24px;font-weight:400;color:var(--gold)}
-.together .identity{display:none}
 @media(max-width:760px){
  /* On a phone this block landed beside the hero, off screen to the right, and widened the page.
     The same two links stay at the end of the journey (« Ensemble ») and at the crossroads. */
  .hero-paths{display:none}
  .hero:has(.hero-paths){height:auto;min-height:170svh}
  .hero .chapter-content{height:100svh}
- .route-topbar{padding:15px var(--pad)}.route-topbar>span{display:none}
- .route-dialog .bureau-content{display:flex;flex-direction:column;gap:25px;align-items:stretch}
- .route-dialog .chapter-content{padding:24px 0;min-height:0}
- .route-dialog h2{font-size:48px}.route-dialog .team-portrait{max-width:100%}
- .route-dialog .body-copy{font-size:15px}.route-dialog .branch-page{padding-bottom:15px}
- .route-fork a{font-size:14px}.together .chapter-content{height:auto;min-height:100svh;padding-bottom:120px}
+ .route-fork a{font-size:14px}
 }
 @media(prefers-reduced-motion:reduce){.route-fork a{transition:none}}
 
-@media(min-width:761px){.hero-paths{top:64svh;bottom:auto}}
-.route-dialog[open]{animation:route-arrive .35s ease-out}
-@keyframes route-arrive{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
-@media(prefers-reduced-motion:reduce){.route-dialog[open]{animation:none}}
+/* Large screens: the cards end just above the bottom line of the home screen (.hero-bottom,
+   100svh − 96px from the top of the section), whatever the height of the screen. */
+@media(min-width:761px){.hero-paths{top:auto;bottom:calc(100% - 100svh + 112px)}}
+/* Short large screens: .hero-bottom is hidden, so the cards keep their place under the 3D emblem,
+   a little more compact to stay above the bottom bar. */
+@media(min-width:761px) and (max-height:720px){
+ .hero-paths{top:min(64svh,calc(100svh - 250px));bottom:auto}
+ .hero-paths .route-fork{gap:7px}
+ .hero-paths .route-fork a{padding-top:10px;padding-bottom:10px}
+}
 
-.board-gallery{max-width:1120px;margin:0 auto;padding:25px 0 65px;border-top:1px solid #d6b66a44}
-.gallery-heading{display:flex;justify-content:space-between;align-items:end;gap:24px;margin:30px 0}
-.gallery-heading h3{font:italic 48px 'Cormorant Garamond',serif;color:var(--gold);margin:10px 0 0}
-.gallery-heading p{font-size:12px;line-height:1.7;opacity:.8}
-.board-grid{display:grid;grid-template-columns:1fr 1fr;gap:32px 24px}
-.board-grid figure{margin:0}.board-grid .portrait-sheet{grid-column:1/-1}
-.board-grid button{position:relative;display:block;width:100%;padding:0;border:1px solid #d6b66a55;background:#f2f0e8;cursor:zoom-in}
-.board-grid img{display:block;width:100%;height:auto}.board-grid button>span{position:absolute;right:12px;bottom:12px;display:grid;place-items:center;width:36px;height:36px;background:#123025ed;color:var(--gold);border-radius:50%}
-.board-grid figcaption{display:flex;gap:16px;font-size:11px;line-height:1.6;margin-top:12px;opacity:.8}.board-grid figcaption>span{white-space:nowrap;color:var(--gold)}
 .gallery-credit{font-size:11px;opacity:.7;margin-top:35px}
 .board-lightbox{position:fixed;inset:0;margin:auto;width:min(1400px,96vw);max-width:none;max-height:96dvh;padding:18px;background:#0c1b15;color:var(--cream);border:1px solid #d6b66a55;overflow:auto}
 .board-lightbox::backdrop{background:#020905ed}.board-lightbox img{display:block;width:100%;height:auto;max-height:75dvh;object-fit:contain}
 .lightbox-toolbar,.lightbox-navigation{display:flex;justify-content:space-between;align-items:center;gap:15px;padding:6px 0 16px;font-size:13px}.lightbox-navigation{padding:16px 0 0}
 .board-lightbox button{font:inherit;color:var(--cream);background:#193b2b;border:1px solid #d6b66a66;padding:12px 18px;cursor:pointer}
-@media(max-width:760px){.gallery-heading{display:block}.gallery-heading h3{font-size:38px}.board-grid{grid-template-columns:1fr;gap:28px}.board-grid .portrait-sheet{grid-column:auto}.board-lightbox{padding:10px;width:98vw}.board-lightbox button{padding:12px;font-size:12px}}
+@media(max-width:760px){.board-lightbox{padding:10px;width:98vw}.board-lightbox button{padding:12px;font-size:12px}}
 
 /* ── Le carrefour: the camera holds at the fork and offers two arrows. ── */
 .progress-track{height:140px}
@@ -1233,6 +1186,8 @@ html[data-chapter="5"] .shade{background-color:#06170b44}
 .branch-card.intro .body-copy{max-width:420px;line-height:1.7;text-shadow:0 2px 14px #06170caa}
 .branch-hint{display:flex;align-items:center;gap:16px;margin-top:28px;font-size:10px;letter-spacing:.18em;color:#d8d3c4}
 .branch-finale{justify-content:center;align-items:flex-end;padding-bottom:3svh}
+/* Large screens: the final card stays above the bottom bar (« Animation », Instagram). */
+@media(min-width:761px){.branch-finale{padding-bottom:calc(78px + env(safe-area-inset-bottom))}}
 .branch-card.finale{width:min(720px,92vw);text-align:center;padding:16px 22px}
 .branch-card.finale h3{font:italic 500 clamp(30px,3.4vw,46px)/1.05 Cormorant,Georgia,serif;color:var(--gold);margin:0 0 8px}
 .branch-card.finale p{font-size:11px;opacity:.75;margin:0}
@@ -1319,7 +1274,7 @@ a,button{touch-action:manipulation}
 /* ── Phones: legible small labels and 44 px touch targets ── */
 @media(max-width:760px){
  .eyebrow,.hero .eyebrow{font-size:11px;letter-spacing:1.6px}
- .journey-link small,.chapter-caption,.motion-button,.branch-count,.branch-hint,.exit-hint small,.branch-topbar>span,.identity span{font-size:11px}
+ .journey-link small,.chapter-caption,.motion-button,.branch-count,.branch-hint,.exit-hint small,.branch-topbar>span{font-size:11px}
  .hero-bottom,.cities small,footer,.values{font-size:10px}
  .fork-label,.path-action small{font-size:10.5px}
  .route-fork a>span{font-size:10px}

@@ -72,9 +72,18 @@ function sidePath({ forkZ, side, turn, leg, hairpin, merge, gap, boards }) {
   };
 }
 
-// Bureau: to the left (-x) at the first crossroads; three boards, left / right / left, then the group photo
-// in the middle of the road at the end.
-// Inscription: to the right (+x) at the second crossroads; a single final board.
+// One entry per side road, with the same name as in SIDES (content.js). Distances in metres.
+//   forkZ    where it leaves the main road (the main road runs from START_Z = 35 towards -z)
+//   side     1 = turns left, -1 = turns right
+//   turn     radius of the turn out of the main road
+//   leg      length of the straight stretch that carries the boards
+//   hairpin  radius of the U-turn at its far end; merge: radius of the turn back onto the main road
+//   gap      distance from the end of the straight stretch to the final board
+//   boards   [distance along the straight stretch, 1 = board on the left / -1 = on the right],
+//            one per photo in SIDES[name].boards
+// Bureau: to the left at the first crossroads; three boards, left / right / left, then the group
+// photo in the middle of the road at the end.
+// Inscription: to the right at the second crossroads; a single final board.
 export const SIDE_PATHS = {
   bureau: sidePath({ forkZ: -52.36, side: 1, turn: 15, leg: 46, hairpin: 10, merge: 15, gap: 13,
     boards: [[9, 1], [23, -1], [37, 1]] }),
@@ -82,10 +91,13 @@ export const SIDE_PATHS = {
 };
 // Scroll screens in each side road's layer: intro, one per board, the final board, the way back.
 export const SIDE_SCREENS = Object.fromEntries(Object.entries(SIDE_PATHS).map(([k, p]) => [k, p.boards.length + 2 + EXIT_SCREENS]));
-export const FORK_Z = { bureau: SIDE_PATHS.bureau.forkZ, inscription: SIDE_PATHS.inscription.forkZ };
-export const JOIN_Z = { bureau: SIDE_PATHS.bureau.joinZ, inscription: SIDE_PATHS.inscription.joinZ };
-// The main journey ends a little after the second side road has merged back.
-export const END_Z = SIDE_PATHS.inscription.joinZ - 8;
+export const FORK_Z = Object.fromEntries(Object.entries(SIDE_PATHS).map(([k, p]) => [k, p.forkZ]));
+export const JOIN_Z = Object.fromEntries(Object.entries(SIDE_PATHS).map(([k, p]) => [k, p.joinZ]));
+// The main road goes on for ROAD_AFTER_LAST_JOIN metres after the last side road has merged back:
+// the camera reaches its end at the very bottom of the page. Raise it to make the road longer
+// (for new chapters after « Ensemble »).
+export const ROAD_AFTER_LAST_JOIN = 8;
+export const END_Z = Math.min(...Object.values(JOIN_Z)) - ROAD_AFTER_LAST_JOIN;
 export const TRAVEL = START_Z - END_Z;
 
 // Spatial buckets of side-road samples for fast distance queries (exact up to CELL units).
