@@ -1,0 +1,10 @@
+{
+  "name": "UOSSA · AESUO — L’esprit Téranga",
+  "short_name": "UOSSA",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#171b14",
+  "theme_color": "#171b14",
+  "icons": [{ "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }]
+}
