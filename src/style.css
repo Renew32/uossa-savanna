@@ -151,8 +151,21 @@ button:focus-visible {
 .top-nav {
   display: flex;
   gap: 35px;
-  margin-left: 10vw;
   font-size: 13px;
+}
+/* With the menu shown, three columns: the two sides take equal room, so the menu sits at the exact
+   centre of the screen whatever the width of the brand and of « Les chemins ». */
+@media (min-width: 761px) {
+  .header {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+  }
+  .brand {
+    justify-self: start;
+  }
+  .routes-menu {
+    justify-self: end;
+  }
 }
 .top-nav a {
   position: relative;
@@ -583,8 +596,9 @@ h2 {
 footer {
   align-self: stretch;
   margin-top: auto;
-  display: flex;
-  justify-content: space-between;
+  /* Three columns of equal sides: the flag stays at the exact centre. */
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
   border-top: 1px solid #d5caaf26;
   padding-top: 24px;
@@ -597,6 +611,13 @@ footer {
   display: flex;
   width: 90px;
   height: 2px;
+}
+footer > span:first-child {
+  justify-self: start;
+}
+footer > span:last-child {
+  justify-self: end;
+  text-align: right;
 }
 .footer-flag i {
   flex: 1;
@@ -715,7 +736,6 @@ footer {
 }
 @media (max-width: 1000px) {
   .top-nav {
-    margin-left: 0;
     gap: 20px;
   }
   .hero-side {
